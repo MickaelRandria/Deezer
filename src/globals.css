@@ -1,0 +1,335 @@
+/* ============================================================
+   DEEZER — CSS Variables + Reset global
+   Généré depuis design-tokens.js
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap');
+
+:root {
+  /* Backgrounds */
+  --bg-base:     #000000;
+  --bg-card:     #111111;
+  --bg-elevated: #1A1A1A;
+  --bg-pressed:  #2A2A2A;
+  --bg-player:   #0D0D0D;
+
+  /* Text */
+  --text-primary:   #FFFFFF;
+  --text-secondary: #B3B3B3;
+  --text-tertiary:  #666666;
+  --text-accent:    #A238FF;
+
+  /* Accent */
+  --accent:       #A238FF;
+  --accent-dark:  #7B1FD4;
+  --accent-alpha: rgba(162, 56, 255, 0.15);
+
+  /* Gradients */
+  --gradient-flow: linear-gradient(135deg, #A238FF 0%, #FF5C8A 100%);
+
+  /* Borders */
+  --border-subtle:  rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-strong:  rgba(255, 255, 255, 0.20);
+  --border-accent:  #A238FF;
+
+  /* UI */
+  --progress-bg:   #333333;
+  --progress-fill: #FFFFFF;
+  --separator:     rgba(255, 255, 255, 0.08);
+
+  /* BTS */
+  --bts-card-bg:      #111111;
+  --bts-card-border:  #A238FF;
+  --bts-icon:         #A238FF;
+  --bts-overlay:      rgba(0, 0, 0, 0.92);
+  --bts-badge-bg:     #A238FF;
+  --bts-story-bar:    rgba(255, 255, 255, 0.3);
+  --bts-story-fill:   #FFFFFF;
+  --bts-focus-bg:     #2A2A2A;
+
+  /* Typography */
+  --font-primary: 'Bricolage Grotesque', sans-serif;
+  --font-condensed: 'wdth' 75;   /* variation axis condensed */
+  --font-normal:    'wdth' 100;  /* variation axis normal */
+
+  /* Spacing */
+  --page-h:       16px;
+  --section-gap:  24px;
+  --item-gap:     12px;
+  --card-padding: 12px;
+
+  /* Sizes */
+  --navbar-h:       83px;
+  --miniplayer-h:   64px;
+  --safe-top:       44px;
+  --safe-bottom:    34px;
+
+  /* Radius */
+  --r-card:      8px;
+  --r-card-lg:   12px;
+  --r-pill:      24px;
+  --r-badge:     4px;
+  --r-progress:  2px;
+
+  /* Transitions */
+  --t-fast:    150ms ease;
+  --t-default: 250ms ease;
+  --t-slow:    400ms ease;
+  --t-spring:  300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Z-index */
+  --z-miniplayer: 100;
+  --z-navbar:     100;
+  --z-overlay:    200;
+  --z-modal:      300;
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  font-size: 16px;
+  line-height: 1.5;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar invisible */
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+/* ── Layout wrapper ── */
+.app-wrapper {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top, var(--safe-top));
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+  transition:
+    max-width 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mode Créateur — expansion vers le plein écran */
+.app-wrapper.creator-mode {
+  max-width: 100vw;
+  border-radius: 0;
+  padding-top: 0;
+  overflow: auto;
+}
+
+/* Fade-in du contenu créateur après l'expansion */
+.creator-fade-in {
+  animation: creatorFadeIn 0.4s ease 0.3s both;
+  height: 100%;
+}
+
+@keyframes creatorFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Zone scrollable centrale */
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* padding bas = MiniPlayer + NavBar + safe area bottom */
+  padding-bottom: calc(var(--miniplayer-h) + var(--navbar-h) + env(safe-area-inset-bottom, var(--safe-bottom)));
+}
+
+/* Page padding horizontal */
+.page-content {
+  padding: 0 var(--page-h);
+}
+
+/* ── Utilitaires typographie ── */
+.section-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+  font-variation-settings: 'wdth' 75;
+}
+
+.track-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variation-settings: 'wdth' 75;
+}
+
+.artist-name {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  font-variation-settings: 'wdth' 100;
+}
+
+.supertitle {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-variation-settings: 'wdth' 100;
+}
+
+/* Condensed — titres, headings, écrans */
+.font-condensed {
+  font-variation-settings: 'wdth' 75;
+  font-weight: 700;
+}
+
+/* Normal — sous-titres, labels, nav, badges */
+.font-normal {
+  font-variation-settings: 'wdth' 100;
+  font-weight: 400;
+}
+
+/* ── Page Transitions ── */
+@keyframes page-slide-up {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sheet-slide-up {
+  from { transform: translateY(100%); opacity: 0.6; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/*
+  .page-enter  →  root de la page  →  sections
+  On cible les sections (petits-enfants directs) pour le stagger.
+  Le 1er enfant visible apparaît en premier, les suivants décalés.
+*/
+.page-enter > * > * {
+  opacity: 0;
+  animation: page-slide-up 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.page-enter > * > *:nth-child(1)  { animation-delay:   0ms; }
+.page-enter > * > *:nth-child(2)  { animation-delay: 180ms; }
+.page-enter > * > *:nth-child(3)  { animation-delay: 340ms; }
+.page-enter > * > *:nth-child(4)  { animation-delay: 490ms; }
+.page-enter > * > *:nth-child(5)  { animation-delay: 630ms; }
+.page-enter > * > *:nth-child(6)  { animation-delay: 760ms; }
+.page-enter > * > *:nth-child(7)  { animation-delay: 880ms; }
+.page-enter > * > *:nth-child(8)  { animation-delay: 990ms; }
+
+/* ── Custom Deezer Map Animations ── */
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 0 0 rgba(162, 56, 255, 0.4); transform: scale(1); }
+  50% { box-shadow: 0 0 15px 5px rgba(162, 56, 255, 0.6); transform: scale(1.02); }
+  100% { box-shadow: 0 0 0 0 rgba(162, 56, 255, 0); transform: scale(1); }
+}
+
+.marker-champion {
+  animation: pulse-glow 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-sheet {
+  background: rgba(17, 17, 17, 0.65) !important;
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+}
+
+/* ── Artist & Bio UI Animations ── */
+
+@keyframes slide-up-fade {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-stagger {
+  opacity: 0;
+  animation: slide-up-fade 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.animate-delay-1 { animation-delay: 0.1s; }
+.animate-delay-2 { animation-delay: 0.2s; }
+.animate-delay-3 { animation-delay: 0.3s; }
+.animate-delay-4 { animation-delay: 0.4s; }
+.animate-delay-5 { animation-delay: 0.5s; }
+
+@keyframes equalizer {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+.waveform-bar {
+  transform-origin: bottom;
+  animation: equalizer 1.2s infinite ease-in-out;
+}
+
+@keyframes breathing-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.breathing-mix {
+  background-size: 200% 200% !important;
+  animation: breathing-gradient 6s infinite ease-in-out;
+}
+
+/* ── Micro-interactions ── */
+/* Applies to any tappable element — scale down on press, spring back */
+.pressable {
+  transition: transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+.pressable:active {
+  transform: scale(0.94);
+  opacity: 0.85;
+}
+
+/* ── Sticky artist header (ProfileView) ── */
+.artist-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px var(--page-h);
+  transform: translateY(-100%);
+  opacity: 0;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 250ms ease;
+  pointer-events: none;
+}
+.artist-sticky-header.visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Utilities */
+.snap-mandatory {
+  scroll-snap-type: x mandatory;
+}
+.snap-center {
+  scroll-snap-align: center;
+}
+.hover-scale {
+  transition: transform var(--t-fast);
+}
+.hover-scale:hover {
+  transform: scale(1.04);
+}

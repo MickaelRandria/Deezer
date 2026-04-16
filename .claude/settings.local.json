@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(git -C \"C:/Users/vrymi\" add \"Downloads/Deezer/\")",
+      "Bash(git -C \"C:/Users/vrymi\" status --short -- \"Downloads/Deezer/\")",
+      "Bash(git -C \"C:/Users/vrymi/Downloads/Deezer\" log --oneline -5)",
+      "Bash(git -C \"C:/Users/vrymi/Downloads/Deezer\" status --short)",
+      "Bash(npx vite:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(pkill -f vite)",
+      "Bash(curl -s \"http://localhost:5173/deezer-api/search?q=booba&limit=1\")",
+      "Bash(curl -s \"http://localhost:5176/deezer-api/search/artist?q=Booba&limit=1\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); a=d['data'][0]; print\\('name:', a['name']\\); print\\('picture_small:', a['picture_small']\\); print\\('picture_medium:', a['picture_medium']\\); print\\('picture_big:', a['picture_big']\\)\")"
+    ]
+  }
+}
