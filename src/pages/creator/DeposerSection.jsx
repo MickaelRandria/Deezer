@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   X, Music2, Mic, ListMusic, ChevronDown, Calendar,
   Check, MoreHorizontal, CloudUpload, ChevronRight,
+  Sparkles, Loader, ShieldCheck,
 } from 'lucide-react';
 import { MOOD_ICONS } from '../../components/DeezerIcons.jsx';
 
@@ -22,11 +23,20 @@ const MOODS = [
 
 const COUNTRIES = ['France', 'Belgique', 'Suisse', 'Canada', 'International'];
 
+const AI_NOTES_TEXT =
+  "Ce morceau est né d'une session acoustique tardive. L'idée était de capturer l'essence d'une nuit d'été à Bordeaux, en mélangeant une guitare bossa nova avec des rythmiques R&B modernes.";
+
+const AI_INSPIRATIONS_TEXT =
+  "João Gilberto pour la pureté de la guitare acoustique, Daniel Caesar pour la chaleur vocale, et les nuits de La Plage du Lac comme toile de fond émotionnelle.";
+
 // ── Helpers ──────────────────────────────────────────────
-function Label({ children, hint }) {
+
+function Label({ children, hint, action }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-      <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{children}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+      <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>
+        {children}
+      </span>
       {hint && (
         <span style={{
           width: 16, height: 16, borderRadius: '50%',
@@ -35,6 +45,7 @@ function Label({ children, hint }) {
           fontSize: '10px', color: 'var(--text-tertiary)', cursor: 'help',
         }}>?</span>
       )}
+      {action}
     </div>
   );
 }
@@ -50,11 +61,17 @@ function Input({ placeholder, value, onChange }) {
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
         borderRadius: 'var(--r-card)', color: 'var(--text-primary)',
         fontSize: '14px', outline: 'none', fontFamily: 'var(--font-primary)',
-        transition: 'border-color var(--t-fast)',
+        transition: 'border-color 150ms ease, box-shadow 150ms ease',
         boxSizing: 'border-box',
       }}
-      onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-      onBlur={e => e.target.style.borderColor = 'var(--border-subtle)'}
+      onFocus={e => {
+        e.target.style.borderColor = 'var(--accent)';
+        e.target.style.boxShadow = '0 0 0 3px rgba(162,56,255,0.15)';
+      }}
+      onBlur={e => {
+        e.target.style.borderColor = 'var(--border-subtle)';
+        e.target.style.boxShadow = 'none';
+      }}
     />
   );
 }
@@ -72,14 +89,61 @@ function Textarea({ placeholder, value, onChange, rows = 3 }) {
         borderRadius: 'var(--r-card)', color: 'var(--text-primary)',
         fontSize: '14px', outline: 'none', fontFamily: 'var(--font-primary)',
         resize: 'none', lineHeight: 1.6,
-        transition: 'border-color var(--t-fast)',
+        transition: 'border-color 150ms ease, box-shadow 150ms ease',
         boxSizing: 'border-box',
       }}
-      onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-      onBlur={e => e.target.style.borderColor = 'var(--border-subtle)'}
+      onFocus={e => {
+        e.target.style.borderColor = 'var(--accent)';
+        e.target.style.boxShadow = '0 0 0 3px rgba(162,56,255,0.15)';
+      }}
+      onBlur={e => {
+        e.target.style.borderColor = 'var(--border-subtle)';
+        e.target.style.boxShadow = 'none';
+      }}
     />
   );
 }
+
+/* ── AI Button ─────────────────────────────────────────── */
+function AIButton({ loading, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: '6px',
+        padding: '5px 12px', borderRadius: 'var(--r-pill)',
+        background: 'linear-gradient(135deg, rgba(162,56,255,0.12) 0%, rgba(255,92,138,0.10) 100%)',
+        border: '1px solid rgba(162,56,255,0.45)',
+        cursor: loading ? 'default' : 'pointer',
+        transition: 'all 150ms ease',
+        boxShadow: '0 0 10px rgba(162,56,255,0.18)',
+        flexShrink: 0,
+      }}
+      onMouseEnter={e => { if (!loading) e.currentTarget.style.boxShadow = '0 0 16px rgba(162,56,255,0.38)'; }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 10px rgba(162,56,255,0.18)'; }}
+    >
+      {loading
+        ? <Loader size={12} color="var(--accent)"
+            style={{ animation: 'spin 0.8s linear infinite' }} />
+        : <Sparkles size={12} color="var(--accent)" />
+      }
+      <span style={{
+        fontSize: '12px', fontWeight: 600,
+        background: 'var(--gradient-flow)', WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        whiteSpace: 'nowrap',
+      }}>
+        {loading ? 'Génération…' : 'Générer avec l\'IA'}
+      </span>
+    </button>
+  );
+}
+
+/* ── Spinner keyframe ── */
+const spinStyle = document.createElement('style');
+spinStyle.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
+document.head.appendChild(spinStyle);
 
 // ── Main component ────────────────────────────────────────
 export default function DeposerSection({ onClose }) {
@@ -92,13 +156,38 @@ export default function DeposerSection({ onClose }) {
   const [inspirations, setInspirations] = useState('');
   const [dragOver, setDragOver]       = useState(false);
 
+  const [notesAiLoading, setNotesAiLoading]         = useState(false);
+  const [inspirationsAiLoading, setInspirationsAiLoading] = useState(false);
+  const [humanCertified, setHumanCertified]         = useState(false);
+
   function toggleMood(id) {
     setMoods(prev =>
       prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
     );
   }
 
-  // Aperçu dynamique
+  function handleNotesAI() {
+    setNotesAiLoading(true);
+    setTimeout(() => {
+      setNotes(AI_NOTES_TEXT);
+      setMoods(prev => {
+        const next = [...prev];
+        if (!next.includes('chill'))     next.push('chill');
+        if (!next.includes('goodVibes')) next.push('goodVibes');
+        return next;
+      });
+      setNotesAiLoading(false);
+    }, 1500);
+  }
+
+  function handleInspirationsAI() {
+    setInspirationsAiLoading(true);
+    setTimeout(() => {
+      setInspirations(AI_INSPIRATIONS_TEXT);
+      setInspirationsAiLoading(false);
+    }, 1500);
+  }
+
   const titlesCount = 4;
   const releaseDate = '10 avril 2024';
   const duration    = '12 min';
@@ -115,7 +204,6 @@ export default function DeposerSection({ onClose }) {
         marginBottom: '28px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Deezer icon */}
           <div style={{
             width: 36, height: 36, borderRadius: '50%',
             background: 'var(--gradient-flow)',
@@ -192,7 +280,6 @@ export default function DeposerSection({ onClose }) {
           <div>
             <Label hint>Pays disponible / Date de sortie</Label>
             <div style={{ display: 'flex', gap: '12px' }}>
-              {/* Pays dropdown */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '11px 14px', borderRadius: 'var(--r-card)',
@@ -203,8 +290,6 @@ export default function DeposerSection({ onClose }) {
                 <span style={{ fontSize: '14px', color: 'var(--text-primary)', flex: 1 }}>{country}</span>
                 <ChevronDown size={14} color="var(--text-secondary)" />
               </div>
-
-              {/* Date picker */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '11px 14px', borderRadius: 'var(--r-card)',
@@ -218,9 +303,13 @@ export default function DeposerSection({ onClose }) {
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Notes — with AI button */}
           <div>
-            <Label>Notes sur la création</Label>
+            <Label action={
+              <AIButton loading={notesAiLoading} onClick={handleNotesAI} />
+            }>
+              Notes sur la création
+            </Label>
             <Textarea
               placeholder="Écrivez ici quelque chose sur le processus ou les inspirations de l'album..."
               value={notes}
@@ -273,9 +362,13 @@ export default function DeposerSection({ onClose }) {
             </div>
           </div>
 
-          {/* Inspirations */}
+          {/* Inspirations — with AI button */}
           <div>
-            <Label>Inspirations / Références</Label>
+            <Label action={
+              <AIButton loading={inspirationsAiLoading} onClick={handleInspirationsAI} />
+            }>
+              Inspirations / Références
+            </Label>
             <Textarea
               placeholder="Écrivez vos inspirations ici..."
               value={inspirations}
@@ -354,16 +447,69 @@ export default function DeposerSection({ onClose }) {
             <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Glissez vos fichiers ici</p>
           </div>
 
+          {/* ── Human Certification toggle ── */}
+          <div
+            onClick={() => setHumanCertified(v => !v)}
+            style={{
+              display: 'flex', alignItems: 'flex-start', gap: '12px',
+              padding: '14px 16px',
+              borderRadius: 'var(--r-card-lg)',
+              border: `1px solid ${humanCertified ? 'var(--accent)' : 'var(--border-default)'}`,
+              background: humanCertified ? 'rgba(162,56,255,0.07)' : 'var(--bg-elevated)',
+              cursor: 'pointer',
+              transition: 'border-color 200ms ease, background 200ms ease',
+              boxShadow: humanCertified ? '0 0 14px rgba(162,56,255,0.18)' : 'none',
+            }}
+          >
+            {/* Toggle track */}
+            <div style={{
+              position: 'relative', width: 40, height: 22, flexShrink: 0,
+              borderRadius: 11,
+              background: humanCertified ? 'var(--accent)' : 'var(--bg-pressed)',
+              border: `1px solid ${humanCertified ? 'var(--accent)' : 'var(--border-default)'}`,
+              transition: 'background 200ms ease',
+              marginTop: '2px',
+            }}>
+              <div style={{
+                position: 'absolute', top: 2,
+                left: humanCertified ? 18 : 2,
+                width: 16, height: 16, borderRadius: '50%',
+                background: '#fff',
+                transition: 'left 200ms cubic-bezier(0.34,1.56,0.64,1)',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+              }} />
+            </div>
+
+            {/* Label */}
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                <ShieldCheck size={14} color={humanCertified ? 'var(--accent)' : 'var(--text-secondary)'} strokeWidth={2} />
+                <span style={{
+                  fontSize: '13px', fontWeight: 700,
+                  color: humanCertified ? 'var(--accent)' : 'var(--text-primary)',
+                }}>
+                  Certifier comme Création 100% Humaine
+                </span>
+              </div>
+              <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', lineHeight: 1.4 }}>
+                Active le Badge Pulse "Vérifié Humain" visible par les auditeurs.
+              </p>
+            </div>
+          </div>
+
           {/* Bouton AJOUTER */}
-          <button style={{
-            width: '100%', padding: '16px',
-            background: 'var(--gradient-flow)', border: 'none', cursor: 'pointer',
-            borderRadius: 'var(--r-card)', color: '#fff',
-            fontSize: '15px', fontWeight: 800, letterSpacing: '0.08em',
-            transition: 'opacity var(--t-fast)',
-          }}
-            onMouseEnter={e => e.target.style.opacity = '0.9'}
-            onMouseLeave={e => e.target.style.opacity = '1'}
+          <button
+            disabled={!humanCertified}
+            style={{
+              width: '100%', padding: '16px',
+              background: humanCertified ? 'var(--gradient-flow)' : 'var(--bg-pressed)',
+              border: 'none', cursor: humanCertified ? 'pointer' : 'not-allowed',
+              borderRadius: 'var(--r-card)', color: humanCertified ? '#fff' : 'var(--text-tertiary)',
+              fontSize: '15px', fontWeight: 800, letterSpacing: '0.08em',
+              transition: 'opacity var(--t-fast), background 200ms ease',
+            }}
+            onMouseEnter={e => { if (humanCertified) e.currentTarget.style.opacity = '0.88'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
           >
             AJOUTER
           </button>

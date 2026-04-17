@@ -79,6 +79,12 @@ export async function getChart(limit = 10) {
   return d.data || [];
 }
 
+/** Cherche des artistes par genre (requête libre). Retourne un tableau d'artistes. */
+export async function searchArtistsByGenre(query, limit = 10) {
+  const d = await get(`/search/artist?q=${encodeURIComponent(query)}&limit=${limit}`);
+  return d.data || [];
+}
+
 /** Récupère les genres musicaux. */
 export async function getGenres() {
   const d = await get('/genre');

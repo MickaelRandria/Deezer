@@ -3,15 +3,15 @@
 // ============================================================
 
 export const currentTrack = {
-  id: 1,
-  title: 'La Lettre',
-  artist: 'Booba',
-  album: 'Mauvais Œil',
-  year: 2000,
-  duration: 214,
-  progress: 45,
-  explicit: true,
-  coverGradient: 'linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0a0a0a 100%)',
+  id: 2,
+  title: 'un thé?',
+  artist: 'aupinard',
+  album: 'spleen. social club',
+  year: 2026,
+  duration: 173,
+  progress: 43,
+  explicit: false,
+  coverGradient: 'linear-gradient(180deg, #1a1a2e 0%, #4a1942 100%)',
 };
 
 export const artists = [

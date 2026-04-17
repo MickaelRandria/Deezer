@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { searchArtist } from '../../api/deezer.js';
 
 function SectionTitle({ children }) {
   return (
@@ -110,11 +111,11 @@ const SOCIAL_BRAND_COLORS = {
   YouTube:   '#FF0000',
 };
 
-/* City poster images (picsum seeds give consistent, beautiful photos) */
+/* City poster images — user-supplied files in public/images/ */
 const CITY_IMAGE = {
-  'Bordeaux':  'https://picsum.photos/seed/bordeaux-city/300/480',
-  'Paris':     'https://picsum.photos/seed/paris-city/300/480',
-  "L'Olympia": 'https://picsum.photos/seed/concert-live-stage/300/480',
+  'Bordeaux':  '/images/ville-de-Bordeaux.jpg',
+  'Paris':     '/images/paris.jfif',
+  "L'Olympia": "/images/l'olympia.jpg",
 };
 
 function ReseauxSection({ networks }) {
@@ -347,12 +348,27 @@ function BackstageCarouselBlock({ creations }) {
   );
 }
 
-/* ── Block C: Inspirations ── */
-function InspirationsBlock({ inspirations, universeTags, albumsList }) {
+/* ── Block C: Inspirations — Bento redesign ── */
+function InspirationsBlock({ inspirations, universeTags }) {
   const [ref, inView] = useInView();
+  const [photos, setPhotos] = useState({});
+
+  // Fetch real Deezer artist photos for each inspiration
+  useEffect(() => {
+    if (!inspirations?.length) return;
+    inspirations.forEach(insp => {
+      searchArtist(insp.name)
+        .then(result => {
+          const photo = result?.picture_medium || result?.picture_small || '';
+          if (photo) setPhotos(prev => ({ ...prev, [insp.name]: photo }));
+        })
+        .catch(() => {}); // fail silently — card falls back to gradient
+    });
+  }, [inspirations]);
+
   if (!inspirations?.length) return null;
-  const covers = (albumsList || []).slice(0, 4).map(a => a.cover).filter(Boolean);
-  const tags = (universeTags || []).slice(0, 4);
+  const tags = universeTags || [];
+
   return (
     <div ref={ref} style={{
       padding: '0 var(--page-h)', marginBottom: '40px',
@@ -361,49 +377,113 @@ function InspirationsBlock({ inspirations, universeTags, albumsList }) {
       transition: 'opacity 500ms ease 200ms, transform 500ms ease 200ms',
     }}>
       <SectionTitle>Inspirations</SectionTitle>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-        {/* Col 1 — genre pills */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+
+      {/* ── 1. Mood tags — horizontal scroll pills ── */}
+      {tags.length > 0 && (
+        <div
+          className="hide-scrollbar"
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            gap: '8px',
+            overflowX: 'auto',
+            paddingBottom: '4px',
+            marginBottom: '16px',
+          }}
+        >
           {tags.map(tag => (
-            <div key={tag} style={{
-              background: 'rgba(162,56,255,0.14)',
-              border: '1px solid rgba(162,56,255,0.3)',
-              borderRadius: 'var(--r-pill)',
-              padding: '8px 6px', textAlign: 'center',
-              fontSize: '11px', fontWeight: 700, color: 'var(--accent)',
-            }}>{tag}</div>
-          ))}
-        </div>
-        {/* Col 2 — artist / mentor cells */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {inspirations.map(insp => (
-            <div key={insp.name} style={{
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-default)',
-              borderRadius: '10px', padding: '8px 10px',
-            }}>
-              <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>{insp.name}</p>
-              <p style={{ fontSize: '10px', color: 'var(--accent)' }}>{insp.type}</p>
+            <div
+              key={tag}
+              style={{
+                flexShrink: 0,
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--accent)',
+                borderRadius: 'var(--r-pill)',
+                padding: '7px 16px',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: 'var(--accent)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {tag}
             </div>
           ))}
         </div>
-        {/* Col 3 — blurred album cover tiles */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {covers.map((cover, i) => (
-            <div key={i} style={{
-              height: '60px', borderRadius: '10px',
-              overflow: 'hidden', position: 'relative',
-              border: '1px solid var(--border-subtle)',
-            }}>
-              <img src={cover} alt="" style={{
-                position: 'absolute', inset: 0,
-                width: '100%', height: '100%', objectFit: 'cover',
-                filter: 'blur(4px) saturate(1.5)', transform: 'scale(1.12)',
-              }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)' }} />
+      )}
+
+      {/* ── 2. Artist bento grid — 2 columns, image + name combined ── */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '12px',
+        }}
+      >
+        {inspirations.map(insp => {
+          const photo = photos[insp.name];
+          // Deterministic gradient fallback while photo loads or if API fails
+          const hue = insp.name.charCodeAt(0) * 47 % 360;
+          const fallbackBg = `linear-gradient(135deg, hsl(${hue},40%,12%), hsl(${(hue + 70) % 360},50%,22%))`;
+
+          return (
+            <div
+              key={insp.name}
+              style={{
+                height: '160px',
+                borderRadius: 'var(--r-card)',
+                overflow: 'hidden',
+                position: 'relative',
+                border: '1px solid var(--border-subtle)',
+                background: photo ? `url(${photo}) center/cover no-repeat` : fallbackBg,
+                cursor: 'default',
+              }}
+            >
+              {/* Heavy gradient overlay — readable text guaranteed */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.9) 100%)',
+                }}
+              />
+
+              {/* Artist name + role anchored to bottom-left */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <p style={{
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  color: '#fff',
+                  lineHeight: 1.25,
+                  marginBottom: '3px',
+                  fontVariationSettings: "'wdth' 80",
+                }}>
+                  {insp.name}
+                </p>
+                <p style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: 'var(--accent)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}>
+                  {insp.type}
+                </p>
+              </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -421,22 +501,26 @@ function QAndABlock({ qAndA }) {
       transform: inView ? 'translateY(0)' : 'translateY(32px)',
       transition: 'opacity 500ms ease 300ms, transform 500ms ease 300ms',
     }}>
-      <SectionTitle>Q & A</SectionTitle>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <h2 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px' }}>
+        Q &amp; A
+      </h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {qAndA.map(({ q, a }, i) => {
           const isOpen = openIndex === i;
           return (
             <div key={i} style={{
               background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-default)',
-              borderRadius: '14px', overflow: 'hidden',
+              border: `1px solid ${isOpen ? 'var(--accent)' : 'var(--border-default)'}`,
+              borderRadius: '14px',
+              overflow: 'hidden',
+              transition: 'border-color 250ms ease',
             }}>
               <button
                 onClick={() => setOpenIndex(isOpen ? null : i)}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center',
                   justifyContent: 'space-between', gap: '12px',
-                  padding: '16px', background: 'none', border: 'none',
+                  padding: '18px', background: 'none', border: 'none',
                   cursor: 'pointer', textAlign: 'left',
                 }}
               >
@@ -444,22 +528,39 @@ function QAndABlock({ qAndA }) {
                   fontSize: '15px', fontWeight: 700,
                   color: 'var(--text-primary)', lineHeight: 1.3,
                 }}>{q}</span>
-                <span style={{
-                  fontSize: '22px', color: 'var(--accent)', fontWeight: 300,
-                  transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)',
-                  transition: 'transform 280ms ease',
-                  flexShrink: 0, lineHeight: 1,
-                }}>+</span>
+                {/* SVG Plus icon — rotates 45° to become × when open */}
+                <svg
+                  width="18" height="18" viewBox="0 0 18 18" fill="none"
+                  aria-hidden="true"
+                  style={{
+                    flexShrink: 0,
+                    color: 'var(--accent)',
+                    transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)',
+                    transition: 'transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  }}
+                >
+                  <line x1="9" y1="2" x2="9" y2="16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <line x1="2" y1="9" x2="16" y2="9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
               </button>
+              {/* CSS Grid height animation — smooth, no fixed maxHeight */}
               <div style={{
-                maxHeight: isOpen ? '220px' : '0px',
-                overflow: 'hidden',
-                transition: 'max-height 350ms cubic-bezier(0.4,0,0.2,1)',
+                display: 'grid',
+                gridTemplateRows: isOpen ? '1fr' : '0fr',
+                transition: 'grid-template-rows 350ms cubic-bezier(0.4, 0, 0.2, 1)',
               }}>
-                <p style={{
-                  padding: '0 16px 16px',
-                  fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65,
-                }}>{a}</p>
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{
+                    borderTop: '1px solid rgba(255,255,255,0.08)',
+                  }}>
+                    <p style={{
+                      padding: '14px 18px 18px',
+                      fontSize: '14px',
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.7,
+                    }}>{a}</p>
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -538,7 +639,6 @@ export default function BioView({ artist, onBack }) {
         <InspirationsBlock
           inspirations={artist.inspirations}
           universeTags={artist.universeTags}
-          albumsList={artist.albumsList}
         />
         <QAndABlock qAndA={artist.qAndA} />
 

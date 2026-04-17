@@ -231,154 +231,38 @@ export const GENRE_LABELS = {
 };
 
 // ============================================================
-// DEEZER MAP — Départements & Artistes
-// ============================================================
-// Chaque département affiche UN seul artiste avec sa vraie
-// photo Deezer CDN (250x250). Plus de lettre de fallback.
-//
-// Photos vérifiées via API Deezer search :
-//   Booba        id 390       → Paris (75)
-//   Niska        id 5288900   → Seine-Saint-Denis (93)
-//   Freeze       id 13755123  → Yvelines (78)
-//   Orelsan      id 259467    → Normandie (76)
-//   Nekfeu       id 1412564   → Hauts-de-France (59)
-//   Vald         id 5175734   → Grand Est (67)
-//   Chilla       id 4121259   → Nouvelle-Aquitaine (33)
-//   Bigflo & Oli id 5497121   → Haute-Garonne (31)
-//   Luidji       id 5617685   → Rhône (69)
-//   Laylow       id 4510044   → Bretagne (35)
-//   Eddy Pretto  id 9030084   → Pays de la Loire (44)
-//   Jul          id 1191615   → Bouches-du-Rhône (13)
+// DEEZER MAP — Artists by City
+// Photos are fetched live from the Deezer API via searchArtist()
+// in MapPage — no hardcoded CDN hashes needed.
 // ============================================================
 
-const CDN = (hash) =>
-  `https://cdn-images.dzcdn.net/images/artist/${hash}/250x250-000000-80-0-0.jpg`;
+export const CITY_ARTISTS = [
+  // ── Bordeaux [44.8378, -0.5792] ─────────────────────────
+  { name: 'Aupinard',      city: 'Bordeaux',  lat: 44.8378, lng: -0.5792, genre: 'rnb',        mockId: 2,    streamsMonth: 480000 },
+  { name: 'Khali',         city: 'Bordeaux',  lat: 44.8378, lng: -0.5792, genre: 'rap',         mockId: null, streamsMonth: 320000 },
+  { name: 'BabySolo33',    city: 'Bordeaux',  lat: 44.8378, lng: -0.5792, genre: 'rap',         mockId: null, streamsMonth: 260000 },
+  { name: 'Odezenne',      city: 'Bordeaux',  lat: 44.8378, lng: -0.5792, genre: 'electronic',  mockId: null, streamsMonth: 190000 },
+  { name: 'Julien Granel', city: 'Bordeaux',  lat: 44.8378, lng: -0.5792, genre: 'pop',         mockId: null, streamsMonth: 175000 },
 
-export const deptArtists = {
+  // ── Paris [48.8566, 2.3522] ──────────────────────────────
+  { name: 'Tiakola',         city: 'Paris', lat: 48.8566, lng: 2.3522, genre: 'rap',        mockId: null, streamsMonth: 1800000 },
+  { name: 'Gazo',            city: 'Paris', lat: 48.8566, lng: 2.3522, genre: 'rap',        mockId: null, streamsMonth: 1500000 },
+  { name: 'Tayc',            city: 'Paris', lat: 48.8566, lng: 2.3522, genre: 'rnb',        mockId: null, streamsMonth: 1200000 },
+  { name: 'Ronisia',         city: 'Paris', lat: 48.8566, lng: 2.3522, genre: 'rnb',        mockId: null, streamsMonth:  650000 },
+  { name: 'DJ Snake',        city: 'Paris', lat: 48.8566, lng: 2.3522, genre: 'electronic', mockId: null, streamsMonth: 5500000 },
+  { name: 'Ibrahim Maalouf', city: 'Paris', lat: 48.8566, lng: 2.3522, genre: 'jazz',       mockId: null, streamsMonth:  380000 },
 
-  // ── Hauts-de-France — NEKFEU ────────────────────────────
-  '59': {
-    num: '59', name: 'Nord', region: 'Hauts-de-France',
-    lat: 50.47, lng: 3.10,
-    artists: [
-      { name: 'Nekfeu', genre: 'rap', streamsMonth: 540000, trend: 'up', monthsChampion: 5, isChampion: true,
-        photo: CDN('0c093e137a288db8d08133ecf092c213') },
-    ],
-  },
+  // ── Marseille [43.2965, 5.3698] ─────────────────────────
+  { name: 'Jul',     city: 'Marseille', lat: 43.2965, lng: 5.3698, genre: 'rap', mockId: null, streamsMonth: 2100000 },
+  { name: 'SCH',     city: 'Marseille', lat: 43.2965, lng: 5.3698, genre: 'rap', mockId: null, streamsMonth: 1600000 },
+  { name: 'Naps',    city: 'Marseille', lat: 43.2965, lng: 5.3698, genre: 'rap', mockId: null, streamsMonth:  890000 },
+  { name: 'Imen Es', city: 'Marseille', lat: 43.2965, lng: 5.3698, genre: 'rnb', mockId: null, streamsMonth:  420000 },
 
-  // ── Normandie — ORELSAN ─────────────────────────────────
-  '76': {
-    num: '76', name: 'Seine-Maritime', region: 'Normandie',
-    lat: 49.44, lng: 1.10,
-    artists: [
-      { name: 'Orelsan', genre: 'rap', streamsMonth: 820000, trend: 'up', monthsChampion: 8, isChampion: true,
-        photo: CDN('cb21b6617783e6050240ba76ca9b3034') },
-    ],
-  },
+  // ── Lyon [45.7640, 4.8357] ───────────────────────────────
+  { name: "L'Allemand", city: 'Lyon', lat: 45.7640, lng: 4.8357, genre: 'rap',        mockId: null, streamsMonth: 680000 },
+  { name: 'Agoria',     city: 'Lyon', lat: 45.7640, lng: 4.8357, genre: 'electronic', mockId: null, streamsMonth: 490000 },
 
-  // ── Grand Est — VALD ────────────────────────────────────
-  '67': {
-    num: '67', name: 'Bas-Rhin', region: 'Grand Est',
-    lat: 48.58, lng: 7.75,
-    artists: [
-      { name: 'Vald', genre: 'rap', streamsMonth: 680000, trend: 'stable', monthsChampion: 4, isChampion: true,
-        photo: CDN('c49cad70e83b5dccd3ebd0c96cb098d4') },
-    ],
-  },
-
-  // ── Île-de-France — Paris — BOOBA ───────────────────────
-  '75': {
-    num: '75', name: 'Paris', region: 'Île-de-France',
-    lat: 48.86, lng: 2.35,
-    artists: [
-      { name: 'Booba', mockId: 1, genre: 'rap', streamsMonth: 1200000, trend: 'stable', monthsChampion: 6, isChampion: true,
-        photo: CDN('38b687e97c6874e744d305ef2ca8d0d0') },
-    ],
-  },
-
-  // ── Île-de-France — Yvelines — FREEZE CORLEONE ──────────
-  '78': {
-    num: '78', name: 'Yvelines', region: 'Île-de-France',
-    lat: 48.77, lng: 1.85,
-    artists: [
-      { name: 'Freeze Corleone', genre: 'rap', streamsMonth: 640000, trend: 'stable', monthsChampion: 8, isChampion: true,
-        photo: CDN('cdac7dd9008bcce4c12809c93989e348') },
-    ],
-  },
-
-  // ── Île-de-France — Seine-Saint-Denis — NISKA ───────────
-  '93': {
-    num: '93', name: 'Seine-Saint-Denis', region: 'Île-de-France',
-    lat: 48.91, lng: 2.49,
-    artists: [
-      { name: 'Niska', genre: 'rap', streamsMonth: 980000, trend: 'up', monthsChampion: 3, isChampion: true,
-        photo: CDN('f03af182a46b9f16be9c3a16d0771286') },
-    ],
-  },
-
-  // ── Bretagne — LAYLOW ───────────────────────────────────
-  '35': {
-    num: '35', name: 'Ille-et-Vilaine', region: 'Bretagne',
-    lat: 48.10, lng: -1.67,
-    artists: [
-      { name: 'Laylow', genre: 'rap', streamsMonth: 395000, trend: 'new', monthsChampion: 1, isChampion: true,
-        photo: CDN('bbcb2b1a7a1500d7fce0705a7769e93e') },
-    ],
-  },
-
-  // ── Pays de la Loire — EDDY DE PRETTO ──────────────────
-  '44': {
-    num: '44', name: 'Loire-Atlantique', region: 'Pays de la Loire',
-    lat: 47.22, lng: -1.55,
-    artists: [
-      { name: 'Eddy de Pretto', genre: 'pop', streamsMonth: 310000, trend: 'up', monthsChampion: 2, isChampion: true,
-        photo: CDN('08259996f2d2536a959781892b77fa82') },
-    ],
-  },
-
-  // ── Nouvelle-Aquitaine — AUPINARD ───────────────────────
-  '33': {
-    num: '33', name: 'Gironde', region: 'Nouvelle-Aquitaine',
-    lat: 44.83, lng: -0.58,
-    artists: [
-      { name: 'aupinard', mockId: 2, genre: 'rnb', streamsMonth: 480000, trend: 'up', monthsChampion: 3, isChampion: true,
-        photo: CDN('b17c24f603a11da0c5c4dafb2fbb4778') },
-      { name: 'Chilla', genre: 'rap', streamsMonth: 280000, trend: 'up', monthsChampion: 0, isChampion: false,
-        photo: CDN('632c37844be6596c04bc6d1a527c6da1') },
-      { name: 'Julien Granel', genre: 'pop', streamsMonth: 175000, trend: 'up', monthsChampion: 1, isChampion: false,
-        photo: '' },
-      { name: 'Pépite', genre: 'pop', streamsMonth: 95000, trend: 'new', monthsChampion: 0, isChampion: false,
-        photo: '' },
-    ],
-  },
-
-  // ── Occitanie — Toulouse — BIGFLO & OLI ─────────────────
-  '31': {
-    num: '31', name: 'Haute-Garonne', region: 'Occitanie',
-    lat: 43.39, lng: 1.44,
-    artists: [
-      { name: 'Bigflo & Oli', genre: 'rap', streamsMonth: 820000, trend: 'up', monthsChampion: 7, isChampion: true,
-        photo: CDN('07408e0ffeeae4b388e5b35c22c3ede3') },
-    ],
-  },
-
-  // ── Auvergne-Rhône-Alpes — LUIDJI ──────────────────────
-  '69': {
-    num: '69', name: 'Rhône', region: 'Auvergne-Rhône-Alpes',
-    lat: 45.75, lng: 4.85,
-    artists: [
-      { name: 'Luidji', genre: 'rnb', streamsMonth: 560000, trend: 'up', monthsChampion: 5, isChampion: true,
-        photo: CDN('d9dd12e27eef5186a56cdcfafefb80df') },
-    ],
-  },
-
-  // ── PACA — Marseille — JUL ──────────────────────────────
-  '13': {
-    num: '13', name: 'Bouches-du-Rhône', region: 'Provence-Alpes-Côte d\'Azur',
-    lat: 43.53, lng: 5.45,
-    artists: [
-      { name: 'Jul', genre: 'rap', streamsMonth: 2100000, trend: 'up', monthsChampion: 12, isChampion: true,
-        photo: CDN('fe5d5fb7fabf145f68254f4b5d3034b9') },
-    ],
-  },
-};
+  // ── Toulouse [43.6047, 1.4442] ───────────────────────────
+  { name: 'Laylow',       city: 'Toulouse', lat: 43.6047, lng: 1.4442, genre: 'rap', mockId: null, streamsMonth:  395000 },
+  { name: 'Bigflo & Oli', city: 'Toulouse', lat: 43.6047, lng: 1.4442, genre: 'rap', mockId: null, streamsMonth:  820000 },
+];

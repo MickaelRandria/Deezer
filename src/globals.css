@@ -231,6 +231,24 @@ html, body {
 .page-enter > * > *:nth-child(7)  { animation-delay: 880ms; }
 .page-enter > * > *:nth-child(8)  { animation-delay: 990ms; }
 
+/* ── Explorer Map Card Animations ── */
+@keyframes radarPulse {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 0.65; }
+  100% { transform: translate(-50%, -50%) scale(3.2); opacity: 0; }
+}
+
+/* Explorer preview card — 2-ring pulse behind avatar */
+@keyframes pulseRing {
+  0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+}
+
+@keyframes mapPan {
+  0%   { transform: translateX(0%)   translateY(0%); }
+  50%  { transform: translateX(-5%)  translateY(-2%); }
+  100% { transform: translateX(0%)   translateY(0%); }
+}
+
 /* ── Custom Deezer Map Animations ── */
 @keyframes pulse-glow {
   0% { box-shadow: 0 0 0 0 rgba(162, 56, 255, 0.4); transform: scale(1); }

@@ -3,8 +3,33 @@ import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronDown, Heart, LocateFixed, Zap, Music2 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { mapEvents, deptArtists } from '../data/mapData.js';
-import { searchArtist } from '../api/deezer.js';
+import { mapEvents, CITY_ARTISTS } from '../data/mapData.js';
+import { searchArtist, searchArtistsByGenre } from '../api/deezer.js';
+
+// Major French cities — used to place API-fetched artists on the map (Deezer has no geo data)
+const FRENCH_CITY_COORDS = [
+  { lat: 48.86,  lng: 2.35,   city: 'Paris' },
+  { lat: 43.30,  lng: 5.37,   city: 'Marseille' },
+  { lat: 45.75,  lng: 4.83,   city: 'Lyon' },
+  { lat: 43.60,  lng: 1.44,   city: 'Toulouse' },
+  { lat: 44.84,  lng: -0.58,  city: 'Bordeaux' },
+  { lat: 47.22,  lng: -1.55,  city: 'Nantes' },
+  { lat: 50.63,  lng: 3.06,   city: 'Lille' },
+  { lat: 48.58,  lng: 7.75,   city: 'Strasbourg' },
+  { lat: 43.70,  lng: 7.26,   city: 'Nice' },
+  { lat: 49.44,  lng: 1.10,   city: 'Rouen' },
+];
+
+// Per-genre Deezer search queries
+const GENRE_QUERIES = {
+  rap:        'rap français',
+  rnb:        'r&b soul français',
+  pop:        'pop france',
+  electronic: 'electro musique france',
+  jazz:       'jazz france',
+  indie:      'indie rock france',
+  rock:       'rock france',
+};
 
 const BORDEAUX = { lat: 44.84, lng: -0.58 };
 const FRANCE_BOUNDS = [[41.0, -6.0], [51.5, 10.5]];
@@ -20,112 +45,139 @@ const GENRE_OPTIONS = [
   { id: 'indie',      label: 'Indie' },
 ];
 
-// Bordeaux local artists — includes Pop newcomers
-const BORDEAUX_ARTISTS = [
-  { name: 'Aupinard',      mockId: 2,    genre: 'rnb',  streamsMonth: 480000, lat: 44.840, lng: -0.577 },
-  { name: 'Khali',         mockId: null, genre: 'rap',  streamsMonth: 320000, lat: 44.855, lng: -0.562 },
-  { name: 'Odezenne',      mockId: null, genre: 'rap',  streamsMonth: 280000, lat: 44.828, lng: -0.598 },
-  { name: 'Julien Granel', mockId: null, genre: 'pop',  streamsMonth: 175000, lat: 44.847, lng: -0.571 },
-  { name: 'Pépite',        mockId: null, genre: 'pop',  streamsMonth: 95000,  lat: 44.839, lng: -0.582 },
-  { name: "Sam's",         mockId: null, genre: 'rnb',  streamsMonth: 145000, lat: 44.832, lng: -0.565 },
-];
-
-// ── Region colours for GeoJSON overlay ───────────────────────────────────────
-const REGION_COLORS = {
-  'Hauts-de-France':               '#3B82F6',
-  'Normandie':                     '#10B981',
-  'Grand Est':                     '#F59E0B',
-  'Île-de-France':                 '#8B5CF6',
-  'Bretagne':                      '#EC4899',
-  'Pays de la Loire':              '#14B8A6',
-  'Nouvelle-Aquitaine':            '#A238FF',
-  'Occitanie':                     '#F97316',
-  'Auvergne-Rhône-Alpes':         '#EF4444',
-  "Provence-Alpes-Côte d'Azur":   '#06B6D4',
-  'Centre-Val de Loire':           '#84CC16',
-  'Bourgogne-Franche-Comté':      '#F43F5E',
-  'Corse':                         '#0EA5E9',
+// Genre brand colors — used for cluster badges, map markers and filter pills
+const GENRE_COLORS = {
+  rap:        '#E4F615',  // Neon Yellow-Green
+  pop:        '#FF0092',  // Vivid Pink/Magenta
+  rock:       '#00D1FF',  // Electric Blue
+  rnb:        '#A238FF',  // Purple (Deezer accent)
+  electronic: '#7B61FF',  // Indigo
+  jazz:       '#FF9500',  // Warm Orange
+  indie:      '#00D1FF',  // Electric Blue
 };
 
-function deptStyle(feature) {
-  const code = feature.properties?.code;
-  const dept = Object.values(deptArtists).find(d => d.num === code);
-  const color = dept ? (REGION_COLORS[dept.region] || '#A238FF') : null;
-  if (color) return { fillColor: color, fillOpacity: 0.18, color, weight: 1.2, opacity: 0.6 };
-  return { fillColor: '#555', fillOpacity: 0.04, color: '#444', weight: 0.5, opacity: 0.3 };
+// Text color to use on top of a genre bubble (dark for bright colors)
+const GENRE_TEXT = {
+  rap:        '#000',
+  pop:        '#fff',
+  rock:       '#000',
+  rnb:        '#fff',
+  electronic: '#fff',
+  jazz:       '#000',
+  indie:      '#000',
+};
+
+// ── Subtle uniform style for GeoJSON department outlines ─────────────────────
+function deptStyle() {
+  return { fillColor: '#1e1e30', fillOpacity: 0.45, color: '#33335a', weight: 0.9, opacity: 0.65 };
+}
+
+// Small coordinate offsets so artists from the same city don't stack perfectly
+const CITY_SPREAD = [
+  [ 0.000,  0.000],
+  [ 0.018,  0.028],
+  [-0.022,  0.020],
+  [ 0.028, -0.016],
+  [-0.018, -0.026],
+  [ 0.010,  0.042],
+  [-0.038,  0.010],
+];
+
+/** Returns a copy of each artist with a small positional offset within its city. */
+function spreadArtists(artists) {
+  const cityIdx = {};
+  return artists.map(a => {
+    if (!cityIdx[a.city]) cityIdx[a.city] = 0;
+    const i = cityIdx[a.city]++;
+    const [dlat, dlng] = CITY_SPREAD[i % CITY_SPREAD.length];
+    return { ...a, lat: a.lat + dlat, lng: a.lng + dlng };
+  });
 }
 
 // ── Clustering helpers ────────────────────────────────────────────────────────
-function getRegionClusters(genreFilter) {
-  const regions = {};
-  Object.values(deptArtists).forEach(dept => {
-    let artists = [...dept.artists];
-    if (genreFilter !== 'all') artists = artists.filter(a => a.genre === genreFilter);
-    if (!artists.length) return;
-    const key = dept.region;
-    if (!regions[key]) regions[key] = { name: key, lats: [], lngs: [], count: 0 };
-    regions[key].lats.push(dept.lat);
-    regions[key].lngs.push(dept.lng);
-    regions[key].count += artists.length;
+/** Groups artists by city and computes topGenre (dominant by count) per cluster. */
+function getCityClusters(artists, genreFilter) {
+  const cities = {};
+  artists.forEach(a => {
+    if (genreFilter !== 'all' && a.genre !== genreFilter) return;
+    if (!cities[a.city]) {
+      cities[a.city] = { name: a.city, lat: a.lat, lng: a.lng, count: 0, genreCount: {} };
+    }
+    cities[a.city].count += 1;
+    cities[a.city].genreCount[a.genre] = (cities[a.city].genreCount[a.genre] || 0) + 1;
   });
-  return Object.values(regions)
-    .filter(r => r.count > 0)
-    .map(r => ({
-      ...r,
-      lat: r.lats.reduce((a, b) => a + b, 0) / r.lats.length,
-      lng: r.lngs.reduce((a, b) => a + b, 0) / r.lngs.length,
-    }));
+  return Object.values(cities).map(c => ({
+    ...c,
+    topGenre: Object.entries(c.genreCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'rap',
+  }));
 }
 
-function makeClusterIcon(count) {
+function makeClusterIcon(count, hexColor = '#A238FF', textColor = '#fff') {
   const sz = count > 9 ? 62 : 54;
+  // Outer glow ring uses hex + 20% alpha (hex "33")
   return L.divIcon({
     className: '',
-    html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:rgba(162,56,255,0.9);border:2px solid rgba(162,56,255,0.5);box-shadow:0 0 0 8px rgba(162,56,255,0.14),0 4px 20px rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;"><span style="font-size:${count > 9 ? 18 : 22}px;font-weight:900;color:#fff;line-height:1;">${count}</span><span style="font-size:8px;color:rgba(255,255,255,0.7);font-weight:600;margin-top:1px;">artistes</span></div>`,
+    html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${hexColor};border:2px solid ${hexColor};box-shadow:0 0 0 8px ${hexColor}33,0 4px 20px rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;"><span style="font-size:${count > 9 ? 18 : 22}px;font-weight:900;color:${textColor};line-height:1;">${count}</span><span style="font-size:8px;color:${textColor === '#000' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)'};font-weight:600;margin-top:1px;">artistes</span></div>`,
     iconSize: [sz, sz],
     iconAnchor: [sz / 2, sz / 2],
   });
 }
 
-function getTopArtistForDept(dept, genreFilter) {
-  let list = [...dept.artists];
-  if (genreFilter !== 'all') list = list.filter(a => a.genre === genreFilter);
-  if (!list.length) return null;
-  return list.sort((a, b) => b.streamsMonth - a.streamsMonth)[0];
-}
+// ── Venue image fallbacks (images libres de salles fréquentes) ──────────────────
+const VENUE_IMAGES = {
+  'Rock School Barbey':  'https://images.unsplash.com/photo-1501386761578-eaa54b2ff533?w=160&h=160&fit=crop&q=70',
+  'Le Krakatoa':         'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=160&h=160&fit=crop&q=70',
+  'Darwin Ecosystème':   'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=160&h=160&fit=crop&q=70',
+  'Café de la Danse':    'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=160&h=160&fit=crop&q=70',
+  'Transbordeur':        'https://images.unsplash.com/photo-1563841930606-67e2bce48b78?w=160&h=160&fit=crop&q=70',
+  'Espace Julien':       'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=160&h=160&fit=crop&q=70',
+  'Le Ferrailleur':      'https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=160&h=160&fit=crop&q=70',
+  "L'Aéronef":           'https://images.unsplash.com/photo-1508854710579-5cecc3a9ff17?w=160&h=160&fit=crop&q=70',
+  'La Cigale':           'https://images.unsplash.com/photo-1574391884720-bbc3740c59d1?w=160&h=160&fit=crop&q=70',
+  "L'Ampère":            'https://images.unsplash.com/photo-1594623274890-6b45ce7cf44a?w=160&h=160&fit=crop&q=70',
+  'Le Rocher de Palmer': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=160&h=160&fit=crop&q=70',
+};
 
 // ── Marker icon builders ──────────────────────────────────────────────────────
+// Design commun : cercle photo + queue triangulaire vers le bas
+function makePinHtml({ imgSrc, fallbackColor, initial, isSelected, badge, size = 48 }) {
+  const ring   = isSelected ? `border:3px solid #C060FF;box-shadow:0 0 0 3px rgba(162,56,255,0.4),0 4px 16px rgba(0,0,0,0.7);` : `border:2.5px solid #A238FF;box-shadow:0 0 8px rgba(162,56,255,0.5),0 3px 10px rgba(0,0,0,0.6);`;
+  const tail   = isSelected ? '#C060FF' : '#A238FF';
+  const hue    = (initial?.charCodeAt(0) || 200) * 47 % 360;
+  const inner  = imgSrc
+    ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'" />`
+    : `<div style="width:100%;height:100%;background:linear-gradient(135deg,hsl(${hue},55%,25%),hsl(${(hue+60)%360},65%,40%));display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.38)}px;font-weight:800;color:rgba(255,255,255,0.9)">${initial || '?'}</div>`;
+  return `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer">
+    <div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;${ring}background:#111;">${inner}</div>
+    <div style="width:0;height:0;border-left:${size/4}px solid transparent;border-right:${size/4}px solid transparent;border-top:${size/3}px solid ${tail};margin-top:-1px;"></div>
+    ${badge ? `<div style="background:#ff7733;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:4px;margin-top:2px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.5)">${badge}</div>` : ''}
+  </div>`;
+}
+
 function getEventIcon(evt, isSelected, photo) {
   const [, m, d] = (evt.date || '').split('-');
-  const dateStr = m && d ? `${d}/${m}` : '—';
-  const border = isSelected ? '#A238FF' : 'rgba(255,255,255,0.35)';
-  const ring   = isSelected ? 'box-shadow:0 0 0 3px rgba(162,56,255,0.35);' : '';
-  const imgSrc = photo || evt.image || '';
-  const hue    = (evt.artists?.[0]?.name || evt.name || 'E').charCodeAt(0) * 47 % 360;
-  const initial = (evt.artists?.[0]?.name || evt.name || 'E')[0].toUpperCase();
-  const inner = imgSrc
-    ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.onerror=null;this.style.display='none';this.parentNode.innerHTML='<div style=\\'width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,hsl(${hue},60%,30%),hsl(${(hue + 60) % 360},70%,50%));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:rgba(255,255,255,0.9)\\'>${initial}</div>'" />`
-    : `<div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,hsl(${hue},60%,30%),hsl(${(hue + 60) % 360},70%,50%));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:rgba(255,255,255,0.9)">${initial}</div>`;
+  const dateStr  = m && d ? `${d}/${m}` : '—';
+  // Priority: venue image > event cover > artist photo
+  const imgSrc   = VENUE_IMAGES[evt.venue?.name] || evt.image || photo || '';
+  const initial  = (evt.artists?.[0]?.name || evt.name || 'E')[0].toUpperCase();
   return L.divIcon({
     className: '',
-    html: `<div style="display:flex;flex-direction:column;align-items:center;width:64px;cursor:pointer"><div style="width:48px;height:48px;border-radius:50%;border:2.5px solid ${border};overflow:hidden;background:#1a1a1a;${ring}">${inner}</div><div style="background:#ff7733;color:#fff;font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;margin-top:-6px;z-index:10">${dateStr}</div></div>`,
-    iconSize: [64, 64],
-    iconAnchor: [32, 24],
+    html: makePinHtml({ imgSrc, initial, isSelected, badge: dateStr }),
+    iconSize: [48, 80],
+    iconAnchor: [24, 64],
   });
 }
 
 function getArtistIcon(artist, isSelected) {
-  const border = isSelected ? '#A238FF' : 'var(--accent)';
-  const shadow = isSelected ? 'box-shadow:0 0 0 3px rgba(162,56,255,0.35);' : '';
-  const hue    = artist.name.charCodeAt(0) * 47 % 360;
-  const inner  = artist.photo
-    ? `<img src="${artist.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none'" />`
-    : `<div style="width:100%;height:100%;border-radius:50%;background:hsl(${hue},50%,25%);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:rgba(255,255,255,0.5)">${artist.name[0]}</div>`;
+  const name   = artist.name || '?';
+  const label  = name.length > 9 ? name.slice(0, 8) + '…' : name;
+  const html   = makePinHtml({ imgSrc: artist.photo, initial: name[0], isSelected, size: 44 }) +
+    `<div style="font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,0.7);padding:1px 6px;border-radius:3px;margin-top:3px;white-space:nowrap;backdrop-filter:blur(4px)">${label}</div>`;
   return L.divIcon({
     className: '',
-    html: `<div style="width:48px;height:48px;border-radius:50%;border:2.5px solid ${border};overflow:hidden;background:#1a1a1a;${shadow}cursor:pointer">${inner}</div>`,
-    iconSize: [48, 48],
-    iconAnchor: [24, 24],
+    html: `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer">${html}</div>`,
+    iconSize: [44, 80],
+    iconAnchor: [22, 60],
   });
 }
 
@@ -360,6 +412,10 @@ export default function MapPage({ onBack, onOpenArtist }) {
   const [genreFilter, setGenreFilter]       = useState('all');
   const [showGenreMenu, setShowGenreMenu]   = useState(false);
   const [targetCluster, setTargetCluster]   = useState(null);
+  const [apiArtists, setApiArtists]         = useState([]);
+  const [apiLoading, setApiLoading]         = useState(false);
+  const [dropdownPos, setDropdownPos]       = useState({ top: 0, left: 0 });
+  const genreButtonRef                      = useRef(null);
 
   // GeoJSON departments
   useEffect(() => {
@@ -369,16 +425,16 @@ export default function MapPage({ onBack, onOpenArtist }) {
       .catch(() => {});
   }, []);
 
-  // Fetch artist photos for Bordeaux list
+  // Fetch profile photos for ALL city artists via Deezer API
+  // — runs once on mount, fires in parallel, fail-safe per artist
   useEffect(() => {
-    BORDEAUX_ARTISTS.forEach(artist => {
+    CITY_ARTISTS.forEach(artist => {
       searchArtist(artist.name)
         .then(result => {
-          if (result?.picture_medium) {
-            setArtistPhotos(prev => ({ ...prev, [artist.name]: result.picture_medium }));
-          }
+          const photo = result?.picture_medium || result?.picture_small || '';
+          if (photo) setArtistPhotos(prev => ({ ...prev, [artist.name]: photo }));
         })
-        .catch(() => {});
+        .catch(() => {}); // silently ignore per-artist failures
     });
   }, []);
 
@@ -399,15 +455,50 @@ export default function MapPage({ onBack, onOpenArtist }) {
     });
   }, []);
 
-  const artists = BORDEAUX_ARTISTS.map(a => ({ ...a, photo: artistPhotos[a.name] || '' }));
+  // Fetch artists from Deezer API when genre filter changes
+  useEffect(() => {
+    if (genreFilter === 'all') { setApiArtists([]); return; }
+    const q = GENRE_QUERIES[genreFilter] || genreFilter;
+    setApiLoading(true);
+    setApiArtists([]);
+    searchArtistsByGenre(q, 10)
+      .then(results => {
+        // Spread artists across major French cities (Deezer has no location data)
+        const mapped = results.slice(0, FRENCH_CITY_COORDS.length).map((a, i) => ({
+          name: a.name,
+          photo: a.picture_medium || a.picture || '',
+          genre: genreFilter,
+          // Deterministic slight offset so overlapping cities don't stack
+          lat: FRENCH_CITY_COORDS[i].lat + [0.05, -0.07, 0.03, -0.05, 0.08, -0.03, 0.06, -0.08, 0.02, -0.06][i],
+          lng: FRENCH_CITY_COORDS[i].lng + [0.06, -0.05, 0.08, -0.04, 0.07, -0.09, 0.03, -0.06, 0.05, -0.07][i],
+          city: FRENCH_CITY_COORDS[i].city,
+          streamsMonth: a.nb_fan ? Math.floor(a.nb_fan * 0.06) : 50000 + i * 8000,
+          nbFan: a.nb_fan || 0,
+          mockId: null,
+        }));
+        setApiArtists(mapped);
+      })
+      .catch(() => setApiArtists([]))
+      .finally(() => setApiLoading(false));
+  }, [genreFilter]);
+
+  // Merge API-fetched photos into CITY_ARTISTS
+  const allArtists = CITY_ARTISTS.map(a => ({ ...a, photo: artistPhotos[a.name] || '' }));
 
   const filteredEvents = genreFilter === 'all'
     ? mapEvents
     : mapEvents.filter(evt => evt.genre === genreFilter);
 
-  const filteredArtists = genreFilter === 'all'
-    ? artists
-    : artists.filter(a => a.genre === genreFilter);
+  // Artists visible in bottom list — filtered by genre, then sorted by streams
+  const listArtistsBase = (genreFilter !== 'all' && apiArtists.length > 0)
+    ? apiArtists
+    : allArtists.filter(a => genreFilter === 'all' || a.genre === genreFilter)
+        .sort((a, b) => b.streamsMonth - a.streamsMonth);
+
+  // Spread artists for individual map pins so same-city markers don't overlap
+  const spreadForMap = spreadArtists(
+    allArtists.filter(a => genreFilter === 'all' || a.genre === genreFilter)
+  );
 
   function handleRecenter() {
     setRecentering(true);
@@ -457,46 +548,37 @@ export default function MapPage({ onBack, onOpenArtist }) {
             }}
           >Pour toi</button>
 
-          {/* Genre dropdown */}
-          <div style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-            <button
-              onClick={() => setShowGenreMenu(v => !v)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '4px',
-                background: genreFilter !== 'all' ? 'var(--accent-alpha)' : 'transparent',
-                border: `1px solid ${genreFilter !== 'all' ? 'var(--accent)' : 'var(--border-default)'}`,
-                borderRadius: '9999px', padding: '6px 14px',
-                fontSize: '14px',
-                color: genreFilter !== 'all' ? 'var(--accent)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
-            >
-              {genreFilter !== 'all' ? GENRE_OPTIONS.find(g => g.id === genreFilter)?.label : 'Genre'}
-              <ChevronDown size={14} style={{ transform: showGenreMenu ? 'rotate(180deg)' : 'none', transition: 'transform 200ms' }} />
-            </button>
-            {showGenreMenu && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 6px)', left: 0,
-                background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                borderRadius: 'var(--r-card)', overflow: 'hidden', zIndex: 2000, minWidth: 140,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.55)',
-              }}>
-                {GENRE_OPTIONS.map(g => (
-                  <button
-                    key={g.id}
-                    onClick={() => { setGenreFilter(g.id); setShowGenreMenu(false); }}
-                    style={{
-                      display: 'block', width: '100%', padding: '10px 14px',
-                      background: genreFilter === g.id ? 'var(--accent-alpha)' : 'transparent',
-                      border: 'none', borderBottom: '1px solid var(--border-subtle)',
-                      cursor: 'pointer', fontSize: '13px', textAlign: 'left',
-                      color: genreFilter === g.id ? 'var(--accent)' : 'var(--text-primary)',
-                      fontFamily: 'var(--font-primary)',
-                    }}
-                  >{g.label}</button>
-                ))}
-              </div>
-            )}
+          {/* Genre dropdown — button only (menu via portal to escape overflow clip) */}
+          <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+            {(() => {
+              const activeColor = genreFilter !== 'all' ? (GENRE_COLORS[genreFilter] || 'var(--accent)') : null;
+              return (
+                <button
+                  ref={genreButtonRef}
+                  onClick={() => {
+                    if (!showGenreMenu && genreButtonRef.current) {
+                      const rect = genreButtonRef.current.getBoundingClientRect();
+                      setDropdownPos({ top: rect.bottom + 6, left: rect.left });
+                    }
+                    setShowGenreMenu(v => !v);
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                    background: activeColor ? `${activeColor}22` : 'transparent',
+                    border: `1px solid ${activeColor || 'var(--border-default)'}`,
+                    borderRadius: '9999px', padding: '6px 14px',
+                    fontSize: '14px',
+                    color: activeColor || 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    transition: 'all 180ms ease',
+                    fontFamily: 'var(--font-primary)',
+                  }}
+                >
+                  {genreFilter !== 'all' ? GENRE_OPTIONS.find(g => g.id === genreFilter)?.label : 'Genre'}
+                  <ChevronDown size={14} style={{ transform: showGenreMenu ? 'rotate(180deg)' : 'none', transition: 'transform 200ms' }} />
+                </button>
+              );
+            })()}
           </div>
 
           {/* Date pill — events mode only */}
@@ -553,8 +635,8 @@ export default function MapPage({ onBack, onOpenArtist }) {
             zoomControl={false}
             attributionControl={false}
           >
-            {/* Dark Deezer-branded tile layer — CartoDB Dark Matter */}
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_matter/{z}/{x}/{y}{r}.png" />
+            {/* CartoDB Dark Matter All — shows streets, labels, borders */}
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
 
             <MapController recenterSignal={recenterSignal} />
             <ZoomTracker onZoomChange={setZoomLevel} />
@@ -573,34 +655,34 @@ export default function MapPage({ onBack, onOpenArtist }) {
               />
             ))}
 
-            {/* Artist markers — clusters when zoomed out, individual pins when zoomed in */}
+            {/* Artist markers — city clusters when zoomed out, individual pins when zoomed in */}
             {mode === 'artists' && (
               zoomLevel < CLUSTER_ZOOM_THRESHOLD
-                ? getRegionClusters(genreFilter).map(cluster => (
-                    <Marker
-                      key={`cluster-${cluster.name}`}
-                      position={[cluster.lat, cluster.lng]}
-                      icon={makeClusterIcon(cluster.count)}
-                      eventHandlers={{ click: () => setTargetCluster({ ...cluster, ts: Date.now() }) }}
-                    />
-                  ))
-                : Object.values(deptArtists).map(dept => {
-                    const artist = getTopArtistForDept(dept, genreFilter);
-                    if (!artist) return null;
+                ? getCityClusters(allArtists, genreFilter).map(cluster => {
+                    const clusterColor = GENRE_COLORS[cluster.topGenre] || '#A238FF';
+                    const clusterTextColor = GENRE_TEXT[cluster.topGenre] || '#fff';
                     return (
                       <Marker
-                        key={`dept-${dept.num}-${genreFilter}`}
-                        position={[dept.lat, dept.lng]}
-                        icon={getArtistIcon(artist, selectedArtist === artist.name)}
-                        eventHandlers={{
-                          click: () => {
-                            setSelectedArtist(artist.name);
-                            if (artist.mockId) onOpenArtist(artist.mockId);
-                          },
-                        }}
+                        key={`cluster-${cluster.name}`}
+                        position={[cluster.lat, cluster.lng]}
+                        icon={makeClusterIcon(cluster.count, clusterColor, clusterTextColor)}
+                        eventHandlers={{ click: () => setTargetCluster({ lat: cluster.lat, lng: cluster.lng, ts: Date.now() }) }}
                       />
                     );
                   })
+                : spreadForMap.map((artist, idx) => (
+                    <Marker
+                      key={`pin-${artist.name}-${idx}`}
+                      position={[artist.lat, artist.lng]}
+                      icon={getArtistIcon(artist, selectedArtist === artist.name)}
+                      eventHandlers={{
+                        click: () => {
+                          setSelectedArtist(artist.name);
+                          if (artist.mockId) onOpenArtist(artist.mockId);
+                        },
+                      }}
+                    />
+                  ))
             )}
           </MapContainer>
 
@@ -714,49 +796,135 @@ export default function MapPage({ onBack, onOpenArtist }) {
             <div style={{ marginBottom: '20px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                 {genreFilter !== 'all'
-                  ? `Artistes · ${GENRE_OPTIONS.find(g => g.id === genreFilter)?.label}`
-                  : 'Meilleurs artistes de chez toi'}
+                  ? `${GENRE_OPTIONS.find(g => g.id === genreFilter)?.label} — France`
+                  : 'Artistes · Top France'}
               </h2>
-              {zoomLevel < CLUSTER_ZOOM_THRESHOLD && (
-                <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                  Touche un cluster pour zoomer sur la région
-                </p>
-              )}
+              <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                {zoomLevel < CLUSTER_ZOOM_THRESHOLD
+                  ? 'Touche un cluster pour zoomer sur la ville'
+                  : `${listArtistsBase.length} artiste${listArtistsBase.length > 1 ? 's' : ''} · données Deezer`}
+              </p>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {filteredArtists.length === 0 ? (
-                <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', textAlign: 'center', padding: '32px 0' }}>
-                  Aucun artiste pour ce genre
-                </p>
-              ) : (
-                filteredArtists.map((artist, idx) => (
+            {/* Loading skeleton while API fetches */}
+            {apiLoading && genreFilter !== 'all' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    <div style={{ width: 32, height: 16, borderRadius: 4, background: 'rgba(255,255,255,0.07)', animation: 'pulse 1.5s infinite' }} />
+                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ height: 14, borderRadius: 4, background: 'rgba(255,255,255,0.07)', animation: 'pulse 1.5s infinite', marginBottom: 6, width: '60%' }} />
+                      <div style={{ height: 12, borderRadius: 4, background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s infinite', width: '40%' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!apiLoading && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {listArtistsBase.length === 0 ? (
+                  <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', textAlign: 'center', padding: '32px 0' }}>
+                    Aucun artiste pour ce genre
+                  </p>
+                ) : listArtistsBase.map((artist, idx) => (
                   <div
-                    key={artist.name}
+                    key={`list-${artist.name}-${idx}`}
                     onClick={() => { if (artist.mockId) onOpenArtist(artist.mockId); }}
                     style={{ display: 'flex', gap: '16px', alignItems: 'center', cursor: artist.mockId ? 'pointer' : 'default' }}
                   >
-                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)', width: '32px' }}>#{idx + 1}</span>
-                    <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#333' }}>
+                    <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', width: '28px', flexShrink: 0 }}>
+                      #{idx + 1}
+                    </span>
+                    <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#222' }}>
                       {artist.photo
-                        ? <img src={artist.photo} alt={artist.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : <div style={{ width: '100%', height: '100%', background: `hsl(${artist.name.charCodeAt(0) * 47 % 360},50%,25%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 800, color: 'rgba(255,255,255,0.5)' }}>{artist.name[0]}</div>
+                        ? <img src={artist.photo} alt={artist.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                        : <div style={{ width: '100%', height: '100%', background: `hsl(${artist.name.charCodeAt(0) * 47 % 360},50%,28%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 800, color: 'rgba(255,255,255,0.6)' }}>{artist.name[0].toUpperCase()}</div>
                       }
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '2px' }}>{artist.name}</p>
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{artist.streamsMonth.toLocaleString('fr-FR')} streams</p>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {artist.name}
+                      </p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        {artist.city && <span style={{ marginRight: 4 }}>📍 {artist.city} ·</span>}
+                        {artist.nbFan
+                          ? `${(artist.nbFan / 1000).toFixed(0)}K fans`
+                          : `${(artist.streamsMonth / 1000).toFixed(0)}K streams`
+                        }
+                      </p>
                     </div>
-                    <button onClick={e => e.stopPropagation()} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-                      <Heart size={20} color="var(--text-primary)" />
+                    {/* Genre badge */}
+                    {(() => {
+                      const gc = GENRE_COLORS[artist.genre];
+                      return gc ? (
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: gc, border: `1px solid ${gc}55`, borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
+                          {GENRE_OPTIONS.find(g => g.id === artist.genre)?.label || artist.genre}
+                        </span>
+                      ) : null;
+                    })()}
+                    <button onClick={e => e.stopPropagation()} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}>
+                      <Heart size={18} color="var(--text-secondary)" />
                     </button>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
+
+      {/* Genre dropdown portal — outside overflow:auto containers so it renders on top */}
+      {showGenreMenu && createPortal(
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: 'fixed',
+            top: dropdownPos.top,
+            left: dropdownPos.left,
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--r-card)',
+            overflow: 'hidden',
+            zIndex: 9000,
+            minWidth: 160,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+            animation: 'page-slide-up 0.15s cubic-bezier(0.16,1,0.3,1)',
+          }}
+        >
+          {GENRE_OPTIONS.map(g => {
+            const gColor = GENRE_COLORS[g.id];
+            const isActive = genreFilter === g.id;
+            return (
+              <button
+                key={g.id}
+                onClick={() => { setGenreFilter(g.id); setShowGenreMenu(false); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  width: '100%', padding: '11px 14px',
+                  background: isActive ? (gColor ? `${gColor}22` : 'var(--accent-alpha)') : 'transparent',
+                  border: 'none', borderBottom: '1px solid var(--border-subtle)',
+                  cursor: 'pointer', fontSize: '13px', textAlign: 'left',
+                  color: isActive ? (gColor || 'var(--accent)') : 'var(--text-primary)',
+                  fontFamily: 'var(--font-primary)',
+                }}
+              >
+                {gColor && (
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: gColor, flexShrink: 0,
+                    boxShadow: isActive ? `0 0 6px ${gColor}` : 'none',
+                    transition: 'box-shadow 180ms',
+                  }} />
+                )}
+                {g.label}
+              </button>
+            );
+          })}
+        </div>,
+        document.body
+      )}
 
       {/* Event detail bottom sheet */}
       {selectedEvent && (
