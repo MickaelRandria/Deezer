@@ -48,7 +48,7 @@ export default function NavBar({ activeTab, onTabChange }) {
                 width: '60px',
                 height: '32px',
                 borderRadius: '16px',
-                background: isActive ? '#C9D321' : 'transparent',
+                background: isActive ? 'var(--accent)' : 'transparent',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -58,8 +58,8 @@ export default function NavBar({ activeTab, onTabChange }) {
               <Icon
                 size={22}
                 strokeWidth={isActive ? 2.5 : 2}
-                color={isActive ? '#000' : 'var(--text-tertiary)'}
-                fill={isActive ? '#000' : 'transparent'}
+                color={isActive ? '#fff' : 'var(--text-tertiary)'}
+                fill={isActive ? '#fff' : 'transparent'}
                 style={{ transition: 'color 0.2s' }}
               />
             </div>
@@ -69,7 +69,7 @@ export default function NavBar({ activeTab, onTabChange }) {
                 fontWeight: isActive ? '600' : '500',
                 lineHeight: 1,
                 color: isActive ? '#fff' : 'var(--text-tertiary)',
-                marginTop: '1px'
+                marginTop: '1px',
               }}
             >
               {label}

@@ -417,12 +417,12 @@ function InspirationsBlock({ inspirations, universeTags }) {
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '12px',
+          gap: 'var(--item-gap)',
+          width: '100%',
         }}
       >
         {inspirations.map(insp => {
           const photo = photos[insp.name];
-          // Deterministic gradient fallback while photo loads or if API fails
           const hue = insp.name.charCodeAt(0) * 47 % 360;
           const fallbackBg = `linear-gradient(135deg, hsl(${hue},40%,12%), hsl(${(hue + 70) % 360},50%,22%))`;
 
@@ -430,21 +430,20 @@ function InspirationsBlock({ inspirations, universeTags }) {
             <div
               key={insp.name}
               style={{
-                height: '160px',
-                borderRadius: 'var(--r-card)',
+                aspectRatio: '1 / 1.1',
+                borderRadius: 'var(--r-card-lg)',
                 overflow: 'hidden',
                 position: 'relative',
-                border: '1px solid var(--border-subtle)',
                 background: photo ? `url(${photo}) center/cover no-repeat` : fallbackBg,
                 cursor: 'default',
               }}
             >
-              {/* Heavy gradient overlay — readable text guaranteed */}
+              {/* Deeper gradient overlay for better readability and a solid "frame" feeling at the bottom */}
               <div
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  background: 'linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.9) 100%)',
+                  background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 75%, #000 100%)',
                 }}
               />
 
@@ -455,28 +454,28 @@ function InspirationsBlock({ inspirations, universeTags }) {
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  padding: '12px',
+                  padding: '12px 14px',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'flex-end',
                 }}
               >
                 <p style={{
-                  fontSize: '14px',
-                  fontWeight: 700,
+                  fontSize: '15px',
+                  fontWeight: 800,
                   color: '#fff',
-                  lineHeight: 1.25,
-                  marginBottom: '3px',
+                  lineHeight: 1.2,
+                  marginBottom: '2px',
                   fontVariationSettings: "'wdth' 80",
                 }}>
                   {insp.name}
                 </p>
                 <p style={{
                   fontSize: '11px',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: 'var(--accent)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
+                  letterSpacing: '0.05em',
                 }}>
                   {insp.type}
                 </p>

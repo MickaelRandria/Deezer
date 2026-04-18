@@ -231,6 +231,75 @@ html, body {
 .page-enter > * > *:nth-child(7)  { animation-delay: 880ms; }
 .page-enter > * > *:nth-child(8)  { animation-delay: 990ms; }
 
+/* GPS route — stroke draws from user dot to artist */
+.gps-route {
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: drawRoute 5s ease-in-out infinite;
+}
+
+@keyframes drawRoute {
+  0%   { stroke-dashoffset: 400; opacity: 0; }
+  8%   { stroke-dashoffset: 400; opacity: 0.9; }
+  68%  { stroke-dashoffset: 0;   opacity: 0.9; }
+  83%  { stroke-dashoffset: 0;   opacity: 0; }
+  84%  { stroke-dashoffset: 400; opacity: 0; }
+  100% { stroke-dashoffset: 400; opacity: 0; }
+}
+
+/* Map pin — drops and bounces like a real location marker */
+.map-pin-bounce {
+  animation: pinDrop 6s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes pinDrop {
+  0%   { transform: translateY(-12px); opacity: 0; }
+  12%  { transform: translateY(3px);   opacity: 1; }
+  20%  { transform: translateY(-4px); }
+  28%  { transform: translateY(1px); }
+  36%  { transform: translateY(0px); }
+  100% { transform: translateY(0px); }
+}
+
+/* Glass shimmer — diagonal light sweep across the map card */
+.map-shimmer {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height: 300%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.055) 50%,
+    transparent 70%
+  );
+  animation: mapShimmer 8.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@keyframes mapShimmer {
+  0%   { transform: translateX(-100%); }
+  29%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Magnetic float — avatar breathes above the map */
+.avatar-float {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: avatarFloat 4s ease-in-out infinite;
+}
+
+@keyframes avatarFloat {
+  0%   { transform: translateY(0px);  filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); }
+  50%  { transform: translateY(-4px); filter: drop-shadow(0 14px 20px rgba(0,0,0,0.65)); }
+  100% { transform: translateY(0px);  filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); }
+}
+
 /* ── Explorer Map Card Animations ── */
 @keyframes radarPulse {
   0%   { transform: translate(-50%, -50%) scale(1); opacity: 0.65; }

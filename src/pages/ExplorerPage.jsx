@@ -194,41 +194,8 @@ export default function ExplorerPage({ onOpenMap, onOpenPlayer }) {
         ))}
       </div>
 
-      {/* 3. "What's missing ?" Section */}
-      <div style={{ padding: "0 var(--page-h)", marginBottom: "36px" }}>
-        <button
-          onClick={onOpenMap}
-          style={{
-            width: "100%",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: 0,
-            marginBottom: "14px",
-            textAlign: "left",
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                fontSize: "18px",
-                fontWeight: "bold",
-                color: "var(--text-primary)",
-                marginBottom: "2px",
-              }}
-            >
-              Deezer Map
-            </h2>
-            <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>
-              Les événements et artistes près de chez toi
-            </p>
-          </div>
-          <ChevronRight size={20} color="var(--text-secondary)" />
-        </button>
-
+      {/* 3. Map Immersive */}
+      <div style={{ marginBottom: "36px" }}>
         <button
           onClick={onOpenMap}
           className="pressable"
@@ -241,127 +208,157 @@ export default function ExplorerPage({ onOpenMap, onOpenPlayer }) {
             cursor: "pointer",
             textAlign: "left",
           }}
+          aria-label="Explorer la carte Deezer"
         >
-          {/* Pure-CSS dark map illusion — no Leaflet, no grey flicker */}
           <div
             style={{
-              width: "100%",
-              height: 210,
-              borderRadius: "var(--r-card-lg)",
-              overflow: "hidden",
               position: "relative",
-              marginBottom: "12px",
-              background: "#080b14",
-              border: "1px solid rgba(162,56,255,0.2)",
+              width: "100%",
+              height: 230,
+              overflow: "hidden",
+              backgroundImage: "url('https://a.basemaps.cartocdn.com/dark_all/12/2034/1461.png')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              maskImage: "linear-gradient(to bottom, transparent 0%, black 14%, black 80%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 14%, black 80%, transparent 100%)",
             }}
           >
-            {/* Slow-panning dark city grid */}
-            <div
-              style={{
-                position: "absolute",
-                inset: "-15%",
-                backgroundImage: [
-                  "repeating-linear-gradient(0deg,   transparent, transparent 29px, rgba(162,56,255,0.07) 30px)",
-                  "repeating-linear-gradient(90deg,  transparent, transparent 29px, rgba(162,56,255,0.07) 30px)",
-                  "repeating-linear-gradient(0deg,   transparent, transparent 89px, rgba(162,56,255,0.04) 90px)",
-                  "repeating-linear-gradient(90deg,  transparent, transparent 89px, rgba(162,56,255,0.04) 90px)",
-                  "radial-gradient(ellipse 80% 60% at 50% 50%, #14102a 0%, #080b14 100%)",
-                ].join(", "),
-                animation: "mapPan 18s ease-in-out infinite",
-              }}
-            />
+            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.42)", pointerEvents: "none" }} />
+            <div className="map-shimmer" />
 
-            {/* Bottom gradient — blends card into page background */}
+            {/* GPS Route SVG */}
+            <svg
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 2 }}
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <filter id="route-glow" x="-60%" y="-60%" width="220%" height="220%">
+                  <feGaussianBlur stdDeviation="1" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <path
+                d="M 19 73 C 35 45, 65 52, 79 26"
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth="0.8"
+                strokeLinecap="round"
+                filter="url(#route-glow)"
+                className="gps-route"
+              />
+            </svg>
+
+            {/* User dot — bottom-left */}
             <div
               style={{
                 position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: 90,
-                background: "linear-gradient(to bottom, rgba(0,0,0,0.1), var(--bg-base))",
+                left: "19%",
+                top: "73%",
+                transform: "translate(-50%, -50%)",
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: "#4d9fff",
+                boxShadow: "0 0 0 3px rgba(77,159,255,0.25), 0 0 14px rgba(77,159,255,0.75)",
+                zIndex: 3,
                 pointerEvents: "none",
               }}
             />
 
-            {/* Pulse rings behind avatar */}
-            {[0, 1].map(i => (
-              <div
-                key={i}
-                style={{
-                  position: "absolute",
-                  top: "46%",
-                  left: "50%",
-                  width: 60,
-                  height: 60,
-                  borderRadius: "50%",
-                  border: "1.5px solid var(--accent)",
-                  animation: `pulseRing 2.4s ${i * 1.2}s ease-out infinite`,
-                  pointerEvents: "none",
-                }}
-              />
-            ))}
-
-            {/* Single centered Aupinard avatar */}
+            {/* Artist — pin + sonar + avatar (top-right) */}
             <div
               style={{
                 position: "absolute",
-                top: "46%",
-                left: "50%",
-                transform: "translate(-50%, -58%)",
+                left: "70%",
+                top: "10%",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
+                zIndex: 4,
               }}
             >
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: "50%",
-                  border: "2px solid var(--accent)",
-                  overflow: "hidden",
-                  background: "#1a1a2e",
-                  boxShadow: "0 0 20px rgba(162,56,255,0.5), 0 4px 16px rgba(0,0,0,0.6)",
-                }}
-              >
-                <img
-                  src={aupinard?.picture_medium || AUPINARD_FALLBACK}
-                  alt="Aupinard"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  onError={e => { e.currentTarget.src = AUPINARD_FALLBACK; }}
-                />
+              <div className="map-pin-bounce" style={{ marginBottom: 2 }}>
+                <svg width="14" height="20" viewBox="0 0 14 20" fill="none" aria-hidden="true">
+                  <path d="M7 0C3.13 0 0 3.13 0 7c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S5.62 4.5 7 4.5s2.5 1.12 2.5 2.5S8.38 9.5 7 9.5z" fill="var(--accent)"/>
+                </svg>
               </div>
-              {/* Event date badge */}
-              <div
-                style={{
-                  background: "#ff7733",
-                  color: "#fff",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  padding: "2px 7px",
-                  borderRadius: 4,
-                  marginTop: -6,
-                  zIndex: 10,
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-                }}
-              >
-                10/07
+              <div style={{ position: "relative", width: 52, height: 52 }}>
+                {[0, 1, 2].map(i => (
+                  <div
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      width: 52,
+                      height: 52,
+                      borderRadius: "50%",
+                      border: "1px solid var(--accent)",
+                      animation: `pulseRing 2.4s ${i * 0.8}s ease-out infinite`,
+                      pointerEvents: "none",
+                    }}
+                  />
+                ))}
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: "50%",
+                    border: "2px solid var(--accent)",
+                    overflow: "hidden",
+                    background: "#1a1a2e",
+                    boxShadow: "0 0 0 4px rgba(162,56,255,0.2), 0 0 24px rgba(162,56,255,0.55)",
+                    position: "relative",
+                    zIndex: 2,
+                  }}
+                >
+                  <img
+                    src={aupinard?.picture_medium || AUPINARD_FALLBACK}
+                    alt="Aupinard"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    onError={e => { e.currentTarget.src = AUPINARD_FALLBACK; }}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Bordeaux glass pill — top-left */}
+            {/* Overlay text */}
+            <div style={{ position: "absolute", bottom: 28, left: 16, zIndex: 5, pointerEvents: "none" }}>
+              <p
+                style={{
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: "#fff",
+                  fontVariationSettings: "'wdth' 75",
+                  textShadow: "0 2px 16px rgba(0,0,0,0.95), 0 1px 4px rgba(0,0,0,1)",
+                  lineHeight: 1.2,
+                  marginBottom: 6,
+                }}
+              >
+                Événements & Artistes<br />autour de toi
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Explorer la carte
+                </span>
+                <ChevronRight size={11} color="var(--accent)" />
+              </div>
+            </div>
+
+            {/* Bordeaux glass pill */}
             <div
               style={{
                 position: "absolute",
-                top: 12,
-                left: 12,
+                top: 16,
+                left: 16,
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
-                background: "rgba(255,255,255,0.1)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
+                background: "rgba(255,255,255,0.12)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                border: "1px solid rgba(255,255,255,0.18)",
                 borderRadius: 9999,
                 padding: "4px 10px",
                 fontSize: 11,
@@ -369,6 +366,7 @@ export default function ExplorerPage({ onOpenMap, onOpenPlayer }) {
                 color: "#fff",
                 letterSpacing: "0.3px",
                 pointerEvents: "none",
+                zIndex: 5,
               }}
             >
               <svg width="9" height="12" viewBox="0 0 9 12" fill="none" aria-hidden="true">
@@ -377,21 +375,6 @@ export default function ExplorerPage({ onOpenMap, onOpenPlayer }) {
               Bordeaux
             </div>
           </div>
-
-          {/* Below Map Card */}
-          <p
-            style={{
-              fontSize: "16px",
-              fontWeight: "bold",
-              color: "var(--text-primary)",
-              marginBottom: "2px",
-            }}
-          >
-            #1 {aupinard?.name || "Aupinard"}
-          </p>
-          <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>
-            prochain événement le 10/07
-          </p>
         </button>
       </div>
 
