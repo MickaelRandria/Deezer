@@ -464,7 +464,7 @@ function ArtistsUniverseOverlay({
 
 /* ─── Main Player ────────────────────────────────────────── */
 
-export default function PlayerPage({ track, onBack }) {
+export default function PlayerPage({ track, onBack, onCoverReady }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showBTS, setShowBTS] = useState(false);
   const [showUniverse, setShowUniverse] = useState(false);
@@ -516,9 +516,9 @@ export default function PlayerPage({ track, onBack }) {
           tracks[0];
 
         music.src = t?.preview || FALLBACK_SRC;
-        setCoverUrl(
-          t?.album?.cover_xl || t?.album?.cover_medium || FALLBACK_COVER,
-        );
+        const url = t?.album?.cover_xl || t?.album?.cover_medium || FALLBACK_COVER;
+        setCoverUrl(url);
+        onCoverReady?.(url);
       })
       .catch(() => {
         music.src = FALLBACK_SRC;
@@ -634,7 +634,7 @@ export default function PlayerPage({ track, onBack }) {
         <div
           style={{
             width: "100%",
-            aspectRatio: "2/3",
+            aspectRatio: "1/1",
             maxHeight: "52vh",
             borderRadius: "var(--r-card)",
             background: coverUrl ? "#111" : track.coverGradient,

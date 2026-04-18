@@ -20,6 +20,7 @@ export default function App() {
   const [previousPage, setPreviousPage] = useState('home');
   const [selectedArtistId, setSelectedArtistId] = useState(1);
   const [creatorMode, setCreatorMode] = useState(false);
+  const [trackCoverUrl, setTrackCoverUrl] = useState('');
 
   function navigate(page, payload) {
     setPreviousPage(currentPage);
@@ -76,7 +77,7 @@ export default function App() {
     return (
       <div className="app-wrapper">
         <div className="page-enter">
-          <PlayerPage track={currentTrack} onBack={() => setCurrentPage('home')} />
+          <PlayerPage track={currentTrack} onBack={() => setCurrentPage('home')} onCoverReady={setTrackCoverUrl} />
         </div>
       </div>
     );
@@ -99,7 +100,7 @@ export default function App() {
               {renderPage()}
             </div>
           </div>
-          <MiniPlayer track={currentTrack} onOpen={() => setCurrentPage('player')} />
+          <MiniPlayer track={currentTrack} coverUrl={trackCoverUrl} onOpen={() => setCurrentPage('player')} />
           <NavBar activeTab={activeTab} onTabChange={handleTabChange} />
         </>
       )}

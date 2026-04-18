@@ -1,6 +1,6 @@
 import { Mic, Heart, SkipForward } from 'lucide-react';
 
-export default function MiniPlayer({ track, onOpen }) {
+export default function MiniPlayer({ track, coverUrl, onOpen }) {
   return (
     <div
       onClick={onOpen}
@@ -29,7 +29,15 @@ export default function MiniPlayer({ track, onOpen }) {
           flexShrink: 0,
           overflow: 'hidden',
         }}
-      />
+      >
+        {coverUrl && (
+          <img
+            src={coverUrl}
+            alt={track.title}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        )}
+      </div>
 
       {/* Titre + artiste */}
       <div style={{ flex: 1, minWidth: 0 }}>
