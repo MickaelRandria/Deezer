@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { currentTrack } from '../../data/mockData.js';
+import { searchTracks } from '../../api/deezer.js';
 import {
   X, Music2, Mic, ListMusic, ChevronDown, Calendar,
   Check, MoreHorizontal, CloudUpload, ChevronRight,
-  Sparkles, Loader, ShieldCheck,
+  Sparkles, Loader, ShieldCheck, Disc3, Video,
 } from 'lucide-react';
 import { MOOD_ICONS } from '../../components/DeezerIcons.jsx';
 
 const CONTENT_TYPES = [
+  { id: 'single',   label: 'Single',   icon: Disc3 },
   { id: 'album',    label: 'Album',    icon: Music2 },
   { id: 'podcast',  label: 'Podcast',  icon: Mic },
   { id: 'playlist', label: 'Playlist', icon: ListMusic },
@@ -24,10 +27,10 @@ const MOODS = [
 const COUNTRIES = ['France', 'Belgique', 'Suisse', 'Canada', 'International'];
 
 const AI_NOTES_TEXT =
-  "Ce morceau est né d'une session acoustique tardive. L'idée était de capturer l'essence d'une nuit d'été à Bordeaux, en mélangeant une guitare bossa nova avec des rythmiques R&B modernes.";
+  "\"un thé?\" est né d'une session acoustique un dimanche soir à Bordeaux. L'idée était de capturer ce moment suspendu entre deux personnes — la conversation qui n'a pas besoin d'être importante pour être vraie. Une guitare bossa nova, quelques cordes discrètes, et cette voix posée comme une confidence.";
 
 const AI_INSPIRATIONS_TEXT =
-  "João Gilberto pour la pureté de la guitare acoustique, Daniel Caesar pour la chaleur vocale, et les nuits de La Plage du Lac comme toile de fond émotionnelle.";
+  "João Gilberto pour la pureté et l'économie de la guitare acoustique, Daniel Caesar pour la chaleur vocale et l'intimité des arrangements, Ichon pour la poésie du quotidien mise en musique.";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -145,20 +148,269 @@ const spinStyle = document.createElement('style');
 spinStyle.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
 document.head.appendChild(spinStyle);
 
+/* ── Backstage photo thumbnails ───────────────────────── */
+const BACKSTAGE_THUMBS = [
+  'https://cdn-images.dzcdn.net/images/cover/4ac90491c0ae1956af7c470b7a4871dd/250x250-000000-80-0-0.jpg',
+  'https://cdn-images.dzcdn.net/images/cover/ec715a0a0c364cbe43b9460979f0acee/250x250-000000-80-0-0.jpg',
+  'https://cdn-images.dzcdn.net/images/cover/c47189ac043fc60aa7d40f5072179fb7/250x250-000000-80-0-0.jpg',
+  'https://cdn-images.dzcdn.net/images/artist/b17c24f603a11da0c5c4dafb2fbb4778/250x250-000000-80-0-0.jpg',
+];
+
+/* ── Mini upload zone ─────────────────────────────────── */
+function UploadMiniZone({ icon, label, hint, type }) {
+  const [phase, setPhase] = useState('idle'); // idle | loading | done
+  const [progress, setProgress] = useState(0);
+
+  function simulate() {
+    if (phase !== 'idle') return;
+    setPhase('loading');
+    setProgress(0);
+    const duration = type === 'backstage' ? 2200 : 1600;
+    const start = Date.now();
+    function tick() {
+      const p = Math.min(100, ((Date.now() - start) / duration) * 100);
+      setProgress(Math.round(p));
+      if (p < 100) requestAnimationFrame(tick);
+      else setPhase('done');
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* ── DONE: voice note ── */
+  if (phase === 'done' && type === 'voice') {
+    return (
+      <div style={{
+        borderRadius: 'var(--r-card)',
+        border: '1.5px solid rgba(74,222,128,0.4)',
+        background: 'rgba(74,222,128,0.07)',
+        padding: '12px 14px',
+        display: 'flex', flexDirection: 'column', gap: '8px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+            background: 'rgba(74,222,128,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Mic size={16} color="#4ade80" strokeWidth={2} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#4ade80' }}>Note vocale ajoutée</p>
+            <p style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>un_thé_voix.mp3 · 0:08</p>
+          </div>
+          <span style={{ fontSize: '11px', color: '#4ade80', fontWeight: 700 }}>✓</span>
+        </div>
+        {/* Waveform bars */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', height: 24, paddingLeft: '44px' }}>
+          {[4,8,14,6,18,10,5,16,8,12,7,20,9,5,14,11,6,17,8,4].map((h, i) => (
+            <div key={i} style={{
+              width: 3, height: h, borderRadius: 2,
+              background: 'rgba(74,222,128,0.6)',
+              flexShrink: 0,
+            }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── DONE: backstage ── */
+  if (phase === 'done' && type === 'backstage') {
+    return (
+      <div style={{
+        borderRadius: 'var(--r-card)',
+        border: '1.5px solid rgba(74,222,128,0.4)',
+        background: 'rgba(74,222,128,0.07)',
+        padding: '12px 14px',
+        display: 'flex', flexDirection: 'column', gap: '10px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: '#4ade80' }}>✓</span>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: '#4ade80', flex: 1 }}>4 photos backstage ajoutées</p>
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {BACKSTAGE_THUMBS.map((src, i) => (
+            <div key={i} style={{
+              width: 56, height: 56, borderRadius: 6, overflow: 'hidden', flexShrink: 0,
+              background: '#1a1a2e',
+            }}>
+              <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── LOADING ── */
+  if (phase === 'loading') {
+    return (
+      <div style={{
+        borderRadius: 'var(--r-card)',
+        border: '1.5px dashed var(--accent)',
+        background: 'var(--accent-alpha)',
+        padding: '12px 14px',
+        display: 'flex', flexDirection: 'column', gap: '8px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {icon}
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent)' }}>
+              {type === 'backstage' ? 'Import en cours…' : 'Chargement…'} {progress}%
+            </p>
+          </div>
+          <Loader size={14} color="var(--accent)" style={{ animation: 'spin 0.8s linear infinite' }} />
+        </div>
+        {/* Progress bar */}
+        <div style={{ height: 3, borderRadius: 2, background: 'var(--border-default)', overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', borderRadius: 2,
+            background: 'var(--gradient-flow)',
+            width: `${progress}%`,
+            transition: 'width 80ms linear',
+          }} />
+        </div>
+      </div>
+    );
+  }
+
+  /* ── IDLE ── */
+  return (
+    <div
+      onClick={simulate}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '12px 14px', borderRadius: 'var(--r-card)',
+        border: '1.5px dashed var(--border-default)',
+        background: 'var(--bg-elevated)',
+        cursor: 'pointer', transition: 'all var(--t-fast)',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-alpha)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}
+    >
+      {icon}
+      <div style={{ flex: 1 }}>
+        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1px' }}>{label}</p>
+        <p style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{hint}</p>
+      </div>
+      <CloudUpload size={16} color="var(--text-tertiary)" />
+    </div>
+  );
+}
+
+/* ── Publish overlay ──────────────────────────────────── */
+function PublishOverlay({ onDone }) {
+  const [phase, setPhase] = useState('sending'); // sending | success
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const start = Date.now();
+    const duration = 1800;
+    function tick() {
+      const p = Math.min(100, ((Date.now() - start) / duration) * 100);
+      setProgress(Math.round(p));
+      if (p < 100) requestAnimationFrame(tick);
+      else setPhase('success');
+    }
+    requestAnimationFrame(tick);
+  }, []);
+
+  useEffect(() => {
+    if (phase === 'success') {
+      const t = setTimeout(onDone, 2000);
+      return () => clearTimeout(t);
+    }
+  }, [phase, onDone]);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 500,
+      background: 'rgba(0,0,0,0.88)',
+      backdropFilter: 'blur(20px)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      gap: '24px',
+    }}>
+      {phase === 'sending' ? (
+        <>
+          <div style={{
+            width: 72, height: 72, borderRadius: '50%',
+            background: 'var(--accent-alpha)',
+            border: '2px solid var(--accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Loader size={30} color="var(--accent)" style={{ animation: 'spin 0.8s linear infinite' }} />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '18px', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>Publication en cours…</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>un thé? · spleen. social club</p>
+          </div>
+          <div style={{ width: 260, height: 4, borderRadius: 2, background: 'var(--border-default)' }}>
+            <div style={{
+              height: '100%', borderRadius: 2,
+              background: 'var(--gradient-flow)',
+              width: `${progress}%`,
+              transition: 'width 80ms linear',
+            }} />
+          </div>
+          <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{progress}%</p>
+        </>
+      ) : (
+        <>
+          <div style={{
+            width: 80, height: 80, borderRadius: '50%',
+            background: 'rgba(74,222,128,0.15)',
+            border: '2px solid #4ade80',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'popIn 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+          }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '28px', marginBottom: '6px', lineHeight: 1 }}>🎶 🪐 ✅</p>
+            <p style={{ fontSize: '22px', fontWeight: 900, color: '#fff', marginBottom: '6px', letterSpacing: '-0.4px' }}>
+              Single publié !
+            </p>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              🎙️ <strong style={{ color: '#fff' }}>un thé?</strong> est maintenant disponible
+            </p>
+            <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+              🌍 Distribution mondiale · 🎧 Prêt à l'écoute
+            </p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────
-export default function DeposerSection({ onClose }) {
-  const [contentType, setContentType] = useState('album');
-  const [albumName, setAlbumName]     = useState('');
-  const [country, setCountry]         = useState('France');
-  const [date, setDate]               = useState('12 avril 2024');
+export default function DeposerSection({ onClose, onPublished }) {
+  const [contentType, setContentType] = useState('single');
+  const [trackCover, setTrackCover]   = useState('');
+  const [albumName, setAlbumName]     = useState(currentTrack.title);
+  const [country]                      = useState('France');
+  const [date]                         = useState(`${currentTrack.year}`);
   const [notes, setNotes]             = useState('');
-  const [moods, setMoods]             = useState(['chill']);
+  const [moods, setMoods]             = useState(['chill', 'goodVibes']);
   const [inspirations, setInspirations] = useState('');
   const [dragOver, setDragOver]       = useState(false);
+
+  useEffect(() => {
+    searchTracks('un thé aupinard', 5)
+      .then(tracks => {
+        const t = tracks.find(t => t.artist?.name?.toLowerCase().includes('aupinard')) || tracks[0];
+        if (t?.album?.cover_medium) setTrackCover(t.album.cover_medium);
+      })
+      .catch(() => {});
+  }, []);
 
   const [notesAiLoading, setNotesAiLoading]         = useState(false);
   const [inspirationsAiLoading, setInspirationsAiLoading] = useState(false);
   const [humanCertified, setHumanCertified]         = useState(false);
+  const [publishing, setPublishing]                 = useState(false);
 
   function toggleMood(id) {
     setMoods(prev =>
@@ -188,9 +440,9 @@ export default function DeposerSection({ onClose }) {
     }, 1500);
   }
 
-  const titlesCount = 4;
-  const releaseDate = '10 avril 2024';
-  const duration    = '12 min';
+  const titlesCount = 1;
+  const releaseDate = `2026`;
+  const duration    = '2 min 53';
 
   return (
     <div style={{
@@ -243,12 +495,13 @@ export default function DeposerSection({ onClose }) {
             background: 'var(--bg-elevated)', padding: '4px',
             borderRadius: 'var(--r-card)', alignSelf: 'flex-start',
           }}>
-            {CONTENT_TYPES.map(({ id, label, icon: Icon }) => {
-              const active = contentType === id;
+            {CONTENT_TYPES.map((ct) => {
+              const active = contentType === ct.id;
+              const CTIcon = ct.icon;
               return (
                 <button
-                  key={id}
-                  onClick={() => setContentType(id)}
+                  key={ct.id}
+                  onClick={() => setContentType(ct.id)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '7px',
                     padding: '9px 16px', borderRadius: 'var(--r-card)',
@@ -259,8 +512,8 @@ export default function DeposerSection({ onClose }) {
                     cursor: 'pointer', transition: 'all var(--t-fast)',
                   }}
                 >
-                  <Icon size={15} strokeWidth={active ? 2.5 : 1.8} />
-                  {label}
+                  <CTIcon size={15} strokeWidth={active ? 2.5 : 1.8} />
+                  {ct.label}
                 </button>
               );
             })}
@@ -415,11 +668,14 @@ export default function DeposerSection({ onClose }) {
             }}>
               <div style={{
                 width: 52, height: 52, borderRadius: 'var(--r-card)', flexShrink: 0,
-                background: 'linear-gradient(135deg, #1a1a3e, #6b21a8, #ec4899)',
-              }} />
+                background: 'linear-gradient(135deg, #1a1a3e, #6b21a8)',
+                overflow: 'hidden',
+              }}>
+                {trackCover && <img src={trackCover} alt="cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+              </div>
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>Daniel Marjon</p>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>28k écoutes</p>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{currentTrack.title}</p>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{currentTrack.album}</p>
               </div>
               <ChevronRight size={16} color="var(--text-tertiary)" />
             </div>
@@ -446,6 +702,22 @@ export default function DeposerSection({ onClose }) {
             </p>
             <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Glissez vos fichiers ici</p>
           </div>
+
+          {/* Note vocale */}
+          <UploadMiniZone
+            icon={<Mic size={18} color="var(--text-tertiary)" strokeWidth={1.5} />}
+            label="Note vocale"
+            hint="MP3 ou WAV · max 5 min"
+            type="voice"
+          />
+
+          {/* Backstage */}
+          <UploadMiniZone
+            icon={<Video size={18} color="var(--text-tertiary)" strokeWidth={1.5} />}
+            label="Contenu backstage"
+            hint="Photo ou vidéo · max 500 Mo"
+            type="backstage"
+          />
 
           {/* ── Human Certification toggle ── */}
           <div
@@ -500,6 +772,7 @@ export default function DeposerSection({ onClose }) {
           {/* Bouton AJOUTER */}
           <button
             disabled={!humanCertified}
+            onClick={() => { if (humanCertified) setPublishing(true); }}
             style={{
               width: '100%', padding: '16px',
               background: humanCertified ? 'var(--gradient-flow)' : 'var(--bg-pressed)',
@@ -513,6 +786,8 @@ export default function DeposerSection({ onClose }) {
           >
             AJOUTER
           </button>
+
+          {publishing && <PublishOverlay onDone={onPublished || onClose} />}
         </div>
       </div>
     </div>

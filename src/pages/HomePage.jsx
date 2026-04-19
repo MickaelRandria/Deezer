@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Bell, Smile, ChevronRight } from 'lucide-react';
 import { getArtist, getArtistTopTracks, normalizeTrack } from '../api/deezer.js';
+import UniverseFeatureBanner from '../components/UniverseFeatureBanner.jsx';
 
 const FAVORITE_ARTISTS_IDS = [152058642, 15337813, 323311, 13152245]; // Aupinard, Green Montana, RK, Zamdane
 const MIX_COLS = [
@@ -94,6 +95,9 @@ export default function HomePage({ onOpenArtist, onOpenPlayer, onEnterCreatorMod
           ))}
         </div>
       </div>
+
+      {/* ── Universe Feature Banner ─────────────────────────── */}
+      <UniverseFeatureBanner onOpenArtist={onOpenArtist} />
 
       {/* ── Flow ───────────────────────────────────────────── */}
       <div style={{ marginBottom: '32px' }}>

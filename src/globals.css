@@ -300,6 +300,12 @@ html, body {
   100% { transform: translateY(0px);  filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); }
 }
 
+@keyframes popIn {
+  0%   { transform: scale(0.4); opacity: 0; }
+  70%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* ── Explorer Map Card Animations ── */
 @keyframes radarPulse {
   0%   { transform: translate(-50%, -50%) scale(1); opacity: 0.65; }

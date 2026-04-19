@@ -1,27 +1,34 @@
+import { useState, useEffect } from 'react';
 import { Play, Mic, TrendingUp, Globe, Users, Plus, CheckCircle2 } from 'lucide-react';
+import { artists } from '../../data/mockData.js';
+import { getArtist, ARTIST_IDS } from '../../api/deezer.js';
 
-const TAGS = ['Nocturne', 'Introspectif', 'Électro', 'Soul', 'Cinématique'];
+const artist = artists.find(a => a.name === 'aupinard');
 
 const STATS = [
-  { label: 'Auditeurs', value: '12.4K', icon: Users,      delta: '+8%' },
-  { label: 'Streams / mois', value: '89K',  icon: TrendingUp, delta: '+14%' },
-  { label: 'Pays', value: '23',    icon: Globe,      delta: null },
+  { label: 'Auditeurs',     value: '66K',  icon: Users,      delta: '+12%' },
+  { label: 'Streams / mois', value: '89K', icon: TrendingUp, delta: '+18%' },
+  { label: 'Pays',          value: '23',   icon: Globe,      delta: null   },
 ];
 
 const ACTIVITY = [
-  { text: 'ÉCLATS ajouté à 4 playlists éditoriales', time: 'il y a 2h',  dot: '#A238FF' },
-  { text: '14 nouveaux followers cette semaine',       time: 'il y a 1j', dot: '#FF5C8A' },
-  { text: '"Lueurs (demo)" a passé 5 000 streams',     time: 'il y a 3j', dot: '#4facfe' },
+  { text: '"un thé?" ajouté à 6 playlists éditoriales Deezer', time: 'il y a 1h',  dot: '#A238FF' },
+  { text: '28 nouveaux followers cette semaine',                time: 'il y a 1j', dot: '#FF5C8A' },
+  { text: '"spleen. social club" a passé 120 000 streams',      time: 'il y a 3j', dot: '#4facfe' },
 ];
 
-const SOCIAL = [
-  { label: 'Instagram', handle: '@nayra.wav',   color: '#E1306C' },
-  { label: 'TikTok',    handle: '@nayra.wav',   color: '#69C9D0' },
-  { label: 'YouTube',   handle: 'Nayra',        color: '#FF0000' },
-  { label: 'SoundCloud',handle: 'nayra-music',  color: '#FF5500' },
-];
+const SOCIAL_COLORS = { Instagram: '#E1306C', TikTok: '#69C9D0', YouTube: '#FF0000' };
 
 export default function AccueilSection({ onNavigate }) {
+  const [artistPhoto, setArtistPhoto] = useState('');
+  const album = artist.albumsList[0];
+
+  useEffect(() => {
+    getArtist(ARTIST_IDS.aupinard)
+      .then(a => setArtistPhoto(a?.picture_medium || ''))
+      .catch(() => {});
+  }, []);
+
   return (
     <div style={{ padding: '32px 40px', display: 'flex', gap: '32px', minHeight: '100%' }}>
 
@@ -41,17 +48,23 @@ export default function AccueilSection({ onNavigate }) {
               background: 'linear-gradient(135deg, #A238FF 0%, #FF5C8A 100%)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '26px', fontWeight: 800, color: '#fff',
-            }}>N</div>
+              overflow: 'hidden',
+            }}>
+              {artistPhoto
+                ? <img src={artistPhoto} alt="aupinard" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : 'A'
+              }
+            </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
-                <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Nayra</span>
+                <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{artist.name}</span>
                 <CheckCircle2 size={16} color="var(--accent)" strokeWidth={2.5} />
               </div>
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                Artiste · Auteure · Productrice
+                {artist.profession}
               </span>
               <br />
-              <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Paris, France</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{artist.location}</span>
             </div>
           </div>
 
@@ -60,7 +73,7 @@ export default function AccueilSection({ onNavigate }) {
             fontSize: '13px', fontStyle: 'italic', color: 'var(--text-secondary)',
             lineHeight: 1.6, borderLeft: '2px solid var(--accent)', paddingLeft: '12px',
           }}>
-            "Je crée pour capturer l'instant avant qu'il ne disparaisse."
+            "La pluie, c'est ces périodes un peu chiantes en amour. Le soleil, c'est ce jour où tu te réveilles et tu souffres beaucoup moins."
           </p>
 
           {/* Boutons */}
@@ -89,7 +102,7 @@ export default function AccueilSection({ onNavigate }) {
               Tags d'univers
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {TAGS.map(tag => (
+              {artist.universeTags.map(tag => (
                 <span key={tag} style={{
                   fontSize: '12px', padding: '4px 10px', borderRadius: 'var(--r-pill)',
                   background: 'var(--bg-pressed)', color: 'var(--text-secondary)',
@@ -109,10 +122,10 @@ export default function AccueilSection({ onNavigate }) {
             Réseaux
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {SOCIAL.map(({ label, handle, color }) => (
+            {artist.socialNetworks.map(({ label, handle }) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</span>
-                <span style={{ fontSize: '12px', color, fontWeight: 500 }}>{handle}</span>
+                <span style={{ fontSize: '12px', color: SOCIAL_COLORS[label] || 'var(--accent)', fontWeight: 500 }}>{handle}</span>
               </div>
             ))}
           </div>
@@ -130,13 +143,15 @@ export default function AccueilSection({ onNavigate }) {
             <div style={{
               width: 52, height: 52, borderRadius: 'var(--r-card)', flexShrink: 0,
               background: 'linear-gradient(135deg, #1a0533, #6b21a8)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden',
             }}>
-              <span style={{ fontSize: '16px', fontWeight: 800, color: '#fff', letterSpacing: '-1px' }}>É</span>
+              {album.cover && (
+                <img src={album.cover} alt={album.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              )}
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>ÉCLATS</p>
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Album · 2024</p>
+              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{album.title}</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{album.type} · {album.year}</p>
             </div>
             <button style={{
               width: 36, height: 36, borderRadius: '50%',
@@ -154,23 +169,26 @@ export default function AccueilSection({ onNavigate }) {
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-          {STATS.map(({ label, value, icon: Icon, delta }) => (
-            <div key={label} style={{
-              background: 'var(--bg-card)', borderRadius: 'var(--r-card-lg)',
-              border: '1px solid var(--border-subtle)', padding: '20px',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                <Icon size={18} color="var(--accent)" strokeWidth={1.8} />
-                {delta && (
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#4ade80', background: 'rgba(74,222,128,0.1)', padding: '2px 7px', borderRadius: 'var(--r-pill)' }}>
-                    {delta}
-                  </span>
-                )}
+          {STATS.map((stat) => {
+            const SI = stat.icon;
+            return (
+              <div key={stat.label} style={{
+                background: 'var(--bg-card)', borderRadius: 'var(--r-card-lg)',
+                border: '1px solid var(--border-subtle)', padding: '20px',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <SI size={18} color="var(--accent)" strokeWidth={1.8} />
+                  {stat.delta && (
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#4ade80', background: 'rgba(74,222,128,0.1)', padding: '2px 7px', borderRadius: 'var(--r-pill)' }}>
+                      {stat.delta}
+                    </span>
+                  )}
+                </div>
+                <p style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>{stat.value}</p>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{stat.label}</p>
               </div>
-              <p style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>{value}</p>
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{label}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* CTA déposer */}
@@ -212,7 +230,6 @@ export default function AccueilSection({ onNavigate }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
             {ACTIVITY.map(({ text, time, dot }, i) => (
               <div key={i} style={{ display: 'flex', gap: '14px', paddingBottom: i < ACTIVITY.length - 1 ? '16px' : 0 }}>
-                {/* Timeline dot + line */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: dot, marginTop: '3px' }} />
                   {i < ACTIVITY.length - 1 && (

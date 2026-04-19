@@ -1,28 +1,19 @@
 import { useState } from 'react';
 import { Plus, Play, MoreHorizontal, Music, Layers, Mic, Image } from 'lucide-react';
+import { artists } from '../../data/mockData.js';
 
-const PROJECTS = [
-  {
-    id: 1, title: 'ÉCLATS', type: 'Album', year: 2024, tracks: 10,
-    gradient: 'linear-gradient(135deg, #1a0533, #6b21a8)',
-    initial: 'É',
-  },
-  {
-    id: 2, title: 'NUITS ROUGES', type: 'EP', year: 2023, tracks: 6,
-    gradient: 'linear-gradient(135deg, #450a0a, #991b1b)',
-    initial: 'N',
-  },
-  {
-    id: 3, title: 'Fragments', type: 'Projet', year: 2023, tracks: null,
-    gradient: 'linear-gradient(135deg, #0f172a, #1e3a5f)',
-    initial: 'F',
-  },
-  {
-    id: 4, title: 'Lueurs (demo)', type: 'Son', year: 2022, tracks: 1,
-    gradient: 'linear-gradient(135deg, #1a1a2e, #2d2d44)',
-    initial: 'L',
-  },
-];
+const artist = artists.find(a => a.name === 'aupinard');
+
+const PROJECTS = artist.albumsList.map((album, i) => ({
+  id: i + 1,
+  title: album.title,
+  type: album.type,
+  year: album.year,
+  tracks: album.type === 'Album' ? (i === 0 ? null : 10) : album.type === 'EP' ? 7 : 1,
+  cover: album.cover,
+  initial: album.title[0].toUpperCase(),
+  gradient: 'linear-gradient(135deg, #1a0533, #6b21a8)',
+}));
 
 const TYPE_ICON = { Album: Layers, EP: Layers, Son: Music, Projet: Image };
 const FILTERS = ['Tous', 'Albums', 'Sons', 'Projets'];
@@ -49,7 +40,7 @@ export default function CreationsSection() {
             Mes créations
           </h2>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            {PROJECTS.length} projets · dernière mise à jour il y a 2h
+            {PROJECTS.length} projets · dernière mise à jour il y a 1h
           </p>
         </div>
         <button style={{
@@ -105,10 +96,14 @@ export default function CreationsSection() {
               <div style={{
                 width: 56, height: 56, borderRadius: 'var(--r-card)',
                 background: project.gradient, flexShrink: 0,
+                overflow: 'hidden',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '20px', fontWeight: 800, color: 'rgba(255,255,255,0.9)',
               }}>
-                {project.initial}
+                {project.cover
+                  ? <img src={project.cover} alt={project.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : project.initial
+                }
               </div>
 
               {/* Info */}

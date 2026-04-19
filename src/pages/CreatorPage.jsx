@@ -7,6 +7,7 @@ import {
 
 import AccueilSection     from './creator/AccueilSection.jsx';
 import DeposerSection     from './creator/DeposerSection.jsx';
+import CreationsSection   from './creator/CreationsSection.jsx';
 import PlaceholderSection from './creator/PlaceholderSection.jsx';
 
 // ── Navigation structure ──────────────────────────────────
@@ -24,6 +25,7 @@ const NAV = [
       { id: 'livraison',          icon: Truck,       label: 'Livraison' },
     ],
   },
+  { id: 'creations',     icon: Music,      label: 'Mes créations' },
   { id: 'audience',      icon: Users,      label: 'Audience' },
   { id: 'univers',       icon: Globe,      label: 'Univers' },
   { id: 'artist-profil', icon: User,       label: 'Artist Profil' },
@@ -133,8 +135,9 @@ export default function CreatorPage({ onExitCreatorMode }) {
   }
 
   function renderMain() {
-    if (activeNav === 'home')   return <AccueilSection onNavigate={setActiveNav} />;
-    if (activeNav === 'upload') return <DeposerSection onClose={() => setActiveNav('home')} />;
+    if (activeNav === 'home')       return <AccueilSection onNavigate={setActiveNav} />;
+    if (activeNav === 'upload')     return <DeposerSection onClose={() => setActiveNav('home')} onPublished={onExitCreatorMode} />;
+    if (activeNav === 'creations')  return <CreationsSection />;
     const ph = PLACEHOLDERS[activeNav];
     if (ph) return <PlaceholderSection icon={ph.icon} title={ph.title} description={ph.description} />;
     return null;
@@ -192,7 +195,7 @@ export default function CreatorPage({ onExitCreatorMode }) {
           background: 'linear-gradient(135deg, #A238FF 0%, #FF5C8A 100%)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '13px', fontWeight: 800, color: '#fff',
-        }}>N</div>
+        }}>A</div>
       </div>
 
       {/* ── Body ───────────────────────────────────────────────── */}
