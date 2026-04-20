@@ -529,7 +529,7 @@ export default function MapPage({ onBack, onOpenArtist }) {
             <ChevronLeft size={24} color="var(--text-primary)" />
           </button>
           <h1 style={{ width: '100%', textAlign: 'center', fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-            Deezer map
+            Deezer test map
           </h1>
         </div>
 
